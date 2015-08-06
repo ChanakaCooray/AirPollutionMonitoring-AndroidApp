@@ -87,6 +87,8 @@ public class DeviceListActivity extends Activity implements Replication.ChangeLi
 
     AsyncTask as;
 
+
+
     private volatile Boolean started = false;
 
     private UsbManager mUsbManager;
@@ -133,7 +135,7 @@ public class DeviceListActivity extends Activity implements Replication.ChangeLi
                 }
             };
 
-    private List<UsbSerialPort> mEntries = new ArrayList<UsbSerialPort>();
+    private List<UsbSerialPort> mEntries = new ArrayList<>();
 
 
     /////////////
@@ -225,7 +227,7 @@ public class DeviceListActivity extends Activity implements Replication.ChangeLi
                 final List<UsbSerialDriver> drivers =
                         UsbSerialProber.getDefaultProber().findAllDrivers(mUsbManager);
 
-                final List<UsbSerialPort> result = new ArrayList<UsbSerialPort>();
+                final List<UsbSerialPort> result = new ArrayList<>();
                 for (final UsbSerialDriver driver : drivers) {
                     final List<UsbSerialPort> ports = driver.getPorts();
                     Log.d(TAG, String.format("+ %s: %s port%s",
@@ -420,7 +422,7 @@ public class DeviceListActivity extends Activity implements Replication.ChangeLi
 
         Document document = database.createDocument();
 
-        Map<String, Object> properties = new HashMap<String, Object>();
+        Map<String, Object> properties = new HashMap<>();
         properties.put("_id", id);
         properties.put("text", text);
         properties.put("check", Boolean.FALSE);
