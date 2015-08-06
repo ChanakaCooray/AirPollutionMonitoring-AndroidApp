@@ -1,0 +1,17 @@
+// Top-level gradle script.
+
+buildscript {
+    dependencies {
+        classpath 'com.android.tools.build:gradle:1.2.3'
+    }
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+        maven {
+            url "http://files.couchbase.com/maven2/"
+        }
+        mavenLocal()
+    }
+}

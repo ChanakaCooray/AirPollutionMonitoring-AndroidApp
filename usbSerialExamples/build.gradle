@@ -1,0 +1,33 @@
+apply plugin: 'android'
+
+android {
+    compileSdkVersion 22
+    buildToolsVersion "21.1.2"
+
+    defaultConfig {
+        minSdkVersion 15
+        targetSdkVersion 22
+
+//        testPackageName "com.hoho.android.usbserial.examples"
+//        testInstrumentationRunner "android.test.InstrumentationTestRunner"
+    }
+
+//    buildTypes {
+//        release {
+//            runProguard true
+//        }
+//    }
+
+        packagingOptions {
+            exclude 'META-INF/LICENSE'
+            exclude 'META-INF/NOTICE'
+        }
+}
+
+dependencies {
+    compile 'com.android.support:support-v4:22.0.0'
+
+    compile 'com.couchbase.lite:couchbase-lite-android:1.1.0-17'
+
+    compile project(':usbSerialForAndroid')
+}
