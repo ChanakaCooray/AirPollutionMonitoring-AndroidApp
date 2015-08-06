@@ -139,4 +139,5 @@ For other help and discussion, please join our Google Group,
 
 Are you using the library? Let us know on the group and we'll add your project to
 [ProjectsUsingUsbSerialForAndroid](https://github.com/mik3y/usb-serial-for-android/wiki/Projects-Using-usb-serial-for-android).
+haha
 
