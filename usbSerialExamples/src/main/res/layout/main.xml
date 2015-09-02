@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent" >
+    android:layout_height="match_parent"
+    android:background="#fffdffff">
 
     <TextView
         android:id="@+id/demoTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
         android:text="@string/app_title"
         android:textSize="24sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:textColor="#ff5db8ff"
+        android:editable="false"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true" />
 
     <TextView
         android:id="@+id/progressBarTitle"
@@ -21,7 +24,8 @@
         android:layout_centerHorizontal="true"
         android:text="@string/refreshing"
         android:padding="8dp"
-        android:textSize="18sp" />
+        android:textSize="18sp"
+        android:textColor="#ff15d6ff" />
     
     <ProgressBar
         android:id="@+id/progressBar"
@@ -60,5 +64,27 @@
         android:layout_height="wrap_content"
         android:typeface="monospace" />
     </ScrollView>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="@string/carbon_monoxide"
+        android:id="@+id/carbon_monoxide"
+        android:layout_marginTop="57dp"
+        android:textColor="#ff1a5dff"
+        android:layout_below="@+id/co_value"
+        android:layout_centerHorizontal="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="@string/co_value"
+        android:id="@+id/co_value"
+        android:textColor="#ff00d477"
+        android:layout_below="@+id/demoScroller"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="33dp" />
 
 </RelativeLayout>

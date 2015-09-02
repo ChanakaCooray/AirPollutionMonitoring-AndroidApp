@@ -23,6 +23,7 @@ package com.hoho.android.usbserial.examples;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
@@ -77,36 +78,34 @@ import java.util.concurrent.Executors;
  *
  * @author mike wakerly (opensource@hoho.com)
  */
-public class DeviceListActivity extends Activity implements Replication.ChangeListener {
+public class DeviceListActivity extends Activity implements Replication.ChangeListener, UsbDataReceiver.Receiver {
 
     private final String TAG = DeviceListActivity.class.getSimpleName();
 
     private static UsbSerialPort sPort = null;
 
     Thread t;
-
     AsyncTask as;
-
 
 
     private volatile Boolean started = false;
 
     private UsbManager mUsbManager;
-//    private ListView mListView;
+    //    private ListView mListView;
     private TextView mProgressBarTitle;
     private TextView mDumpTextView;
-
     private TextView demoTitle;
-
+    private TextView mCOValue;
     private ProgressBar mProgressBar;
     private ScrollView mScrollView;
+    private List<UsbSerialPort> mEntries = new ArrayList<>();
 
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
     private final ExecutorService threadpool = Executors.newFixedThreadPool(5);
 
     private SerialInputOutputManager mSerialIoManager;
-
+    private UsbDataReceiver mReceiver;
     private final SerialInputOutputManager.Listener mListener =
             new SerialInputOutputManager.Listener() {
 
@@ -135,8 +134,6 @@ public class DeviceListActivity extends Activity implements Replication.ChangeLi
                 }
             };
 
-    private List<UsbSerialPort> mEntries = new ArrayList<>();
-
 
     /////////////
     ////couchbase vari
@@ -148,10 +145,7 @@ public class DeviceListActivity extends Activity implements Replication.ChangeLi
     public static final String designDocName = "grocery-local";
     public static final String byDateViewName = "byDate";
 
-    // By default, use the sync gateway running on the Couchbase demo server.
-    // Warning: this will have "random data" entered by other users.
-    // If you want to limit this to your own data, please install and run your own
-    // Sync Gateway and point it to that URL instead.
+
     public static final String SYNC_URL = "http://192.248.8.247:4984/sync_gateway";
 
     //couch internals
@@ -173,31 +167,39 @@ public class DeviceListActivity extends Activity implements Replication.ChangeLi
 
         mDumpTextView = (TextView) findViewById(R.id.consoleText);
         mScrollView = (ScrollView) findViewById(R.id.demoScroller);
+        mCOValue = (TextView) findViewById(R.id.co_value);
 
-        t = new Thread(){
-            @Override
-            public void run() {
-                while(!started) {
-                    Log.d(TAG, started + "");
-                    boolean a = refreshDeviceList();
-                    Log.d(TAG,a+"");
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        };
+        mReceiver = new UsbDataReceiver(new Handler());
+        mReceiver.setReceiver(this);
+        Intent intent = new Intent(Intent.ACTION_SYNC, null, this, UsbSerialService.class);
+        intent.putExtra("receiver", mReceiver);
+        startService(intent);
+//KEEP
+//
+//        t = new Thread(){
+//            @Override
+//            public void run() {
+//                while(!started) {
+//                    Log.d(TAG, started + "");
+//                    boolean a = refreshDeviceList();
+//                    Log.d(TAG,a+"");
+//                    try {
+//                        Thread.sleep(1000);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//            }
+//        };
+//
+//        t.start();
 
-        t.start();
-
-        try {
-            startCBLite();
-        } catch (Exception e) {
-            Toast.makeText(getApplicationContext(), "Error Initializing CBLIte, see logs for details", Toast.LENGTH_LONG).show();
-            com.couchbase.lite.util.Log.e(TAG, "Error initializing CBLite", e);
-        }
+//        try {
+//            startCBLite();
+//        } catch (Exception e) {
+//            Toast.makeText(getApplicationContext(), "Error Initializing CBLIte, see logs for details", Toast.LENGTH_LONG).show();
+//            com.couchbase.lite.util.Log.e(TAG, "Error initializing CBLite", e);
+//        }
     }
 
 //    @Override
@@ -221,28 +223,28 @@ public class DeviceListActivity extends Activity implements Replication.ChangeLi
 //        as = new AsyncTask<Void, Void, List<UsbSerialPort>>() {
 //            @Override
 //            protected List<UsbSerialPort> doInBackground(Void... params) {
-                Log.d(TAG, "Refreshing device list ...");
+        Log.d(TAG, "Refreshing device list ...");
 //                SystemClock.sleep(1000);
 
-                final List<UsbSerialDriver> drivers =
-                        UsbSerialProber.getDefaultProber().findAllDrivers(mUsbManager);
+        final List<UsbSerialDriver> drivers =
+                UsbSerialProber.getDefaultProber().findAllDrivers(mUsbManager);
 
-                final List<UsbSerialPort> result = new ArrayList<>();
-                for (final UsbSerialDriver driver : drivers) {
-                    final List<UsbSerialPort> ports = driver.getPorts();
-                    Log.d(TAG, String.format("+ %s: %s port%s",
-                            driver, Integer.valueOf(ports.size()), ports.size() == 1 ? "" : "s"));
-                    result.addAll(ports);
-                }
+        final List<UsbSerialPort> result = new ArrayList<>();
+        for (final UsbSerialDriver driver : drivers) {
+            final List<UsbSerialPort> ports = driver.getPorts();
+            Log.d(TAG, String.format("+ %s: %s port%s",
+                    driver, Integer.valueOf(ports.size()), ports.size() == 1 ? "" : "s"));
+            result.addAll(ports);
+        }
 
 //                return result;
 //            }
 //
 //            @Override
 //            protected void onPostExecute(List<UsbSerialPort> result) {
-                if(!started) {
-                    mEntries.clear();
-                    mEntries.addAll(result);
+        if (!started) {
+            mEntries.clear();
+            mEntries.addAll(result);
 //                mAdapter.notifyDataSetChanged();
 
 //                hideProgressBar();
@@ -255,17 +257,17 @@ public class DeviceListActivity extends Activity implements Replication.ChangeLi
 //                    mProgressBarTitle.setText(
 //                            String.format("%s device(s) found", Integer.valueOf(mEntries.size())));
 
-                    if (mEntries.size() > 0) {
-                        sPort = mEntries.get(0);
-                        started = true;
-                        startConsole();
-                        return true;
-                    }
+            if (mEntries.size() > 0) {
+                sPort = mEntries.get(0);
+                started = true;
+                startConsole();
+                return true;
+            }
 
 //                while(mEntries.size()>0);
-                }
+        }
 //                hideProgressBar();
-        Log.d(TAG,"hide progress bar");
+        Log.d(TAG, "hide progress bar");
 //            }
 //
 //        }.execute((Void) null);
@@ -340,7 +342,7 @@ public class DeviceListActivity extends Activity implements Replication.ChangeLi
 
     private void updateReceivedData(byte[] data) {
         String a = new String(data);
-        final String message = "Read "+a+"  ======" + "\n\n"+started;
+        final String message = "Read " + a + "  ======" + "\n\n" + started;
 //        mDumpTextView.append(message);
 //        mScrollView.smoothScrollTo(0, mDumpTextView.getBottom());
 
@@ -442,8 +444,7 @@ public class DeviceListActivity extends Activity implements Replication.ChangeLi
         if (!replication.isRunning()) {
             String msg = String.format("Replicator %s not running", replication);
             com.couchbase.lite.util.Log.d(TAG, msg);
-        }
-        else {
+        } else {
             int processed = replication.getCompletedChangesCount();
             int total = replication.getChangesCount();
             String msg = String.format("Replicator processed %d / %d", processed, total);
@@ -451,22 +452,66 @@ public class DeviceListActivity extends Activity implements Replication.ChangeLi
         }
 
         if (event.getError() != null) {
-            showError("Sync error", event.getError());
+            //showError("Sync error", event.getError());
         }
 
     }
 
-    public void showError(final String errorMessage, final Throwable throwable) {
+    public void showError(final String errorMessage) {
 
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                String msg = String.format("%s: %s", errorMessage, throwable);
-                com.couchbase.lite.util.Log.e(TAG, msg, throwable);
+                String msg = String.format("%s", errorMessage);
                 Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
             }
         });
 
     }
 
+    @Override
+    public void onReceiveResult(int resultCode, Bundle resultData) {
+        Log.d(TAG, "Service Result on DeviceListActivity");
+        switch (resultCode) {
+
+            case UsbSerialService.STATUS_RUNNING:
+                Log.d(TAG, "DATABASE_NAME");
+                //setProgressBarIndeterminateVisibility(true);
+                break;
+
+            case UsbSerialService.STATUS_DEVICE_FOUND:
+                mProgressBarTitle.setText("Reading Data");
+                break;
+
+            case UsbSerialService.STATUS_FINISHED:
+                Log.d(TAG, "USB_STATUS_FINISHED");
+                String[] results = resultData.getStringArray("result");
+                mCOValue.setText(results[0]);
+                break;
+
+            case UsbSerialService.STATUS_ERROR:
+                String error = resultData.getString(Intent.EXTRA_TEXT);
+                Toast.makeText(this, error, Toast.LENGTH_LONG).show();
+                Log.d(TAG, "USB_STATUS_ERROR");
+                break;
+            case UsbSerialService.STATUS_ERROR_COUCHBASE:
+                showError("Error Connecting to Server");
+                break;
+        }
+    }
+
+    private String[] getGasValues(String data) {
+        String[] gasses = data.split(";");
+        String[] gasValues = new String[3];
+        int i = 0;
+        for (String gas : gasses) {
+            Log.d(TAG, "GAS_VALUE" + gas);
+            String[] gasData = gas.split(":");
+            if (gasData.length == 3) {
+                gasValues[i] = gasData[2];
+
+            }
+        }
+        return gasValues;
+    }
 }
