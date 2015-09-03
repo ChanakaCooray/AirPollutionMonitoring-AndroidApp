@@ -80,7 +80,8 @@ public class UsbSerialService extends Service implements ChangeListener {
     public static final String DATABASE_NAME = "grocery-sync";
     public static final String designDocName = "grocery-local";
     public static final String byDateViewName = "byDate";
-    public static final String SYNC_URL = "http://192.248.8.247:4984/sync_gateway";
+    public static final String SYNC_URL = "http://192.248.8.247:4985/sync_gateway";
+    private String userEmail;
 
     private LocationManager locationManager;
     private double latitute;
@@ -104,10 +105,14 @@ public class UsbSerialService extends Service implements ChangeListener {
                     try {
                         if(gasValues[0]!=null && locationFound) {
                             createGasDataEntry(gasValues);
+                            Log.d(TAG,"SENDCOUCH "+gasValues);
+                        }else {
+                            Log.e(TAG,"SENDCOUCHERROR "+gasValues[0]+" "+locationFound+" "+userEmail);
                         }
                         receiver.send(STATUS_FINISHED, bundle);
                     } catch (Exception e) {
                         Log.e(TAG, "couchbase can't create entry");
+                        Log.e(TAG,"SENDCOUCHERROR EXCEPTION"+e.getMessage());
                     }
 
                 }
@@ -129,9 +134,11 @@ public class UsbSerialService extends Service implements ChangeListener {
     }
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // The service is starting, due to a call to startService()
 
+        // The service is starting, due to a call to startService()
         Log.d(TAG, "Service Started!");
+
+        userEmail = UserEmailFetcher.getEmail(this);
         receiver = intent.getParcelableExtra("receiver");
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
         bundle = new Bundle();
@@ -148,6 +155,7 @@ public class UsbSerialService extends Service implements ChangeListener {
                 longitude = location.getLongitude();
                 Log.d(TAG,"latitude"+latitute);
                 Log.d(TAG,"longitude"+longitude);
+                locationFound = true;
             }
 
             public void onStatusChanged(String provider, int status, Bundle extras) {}
@@ -263,6 +271,7 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         if (event.getError() != null) {
             receiver.send(STATUS_ERROR_COUCHBASE, Bundle.EMPTY);
+            Log.e(TAG,"COUCH_INIT_ERROR "+event.getError());
         }
     }
 
@@ -285,6 +294,7 @@ public class UsbSerialService extends Service implements ChangeListener {
         properties.put("CO", gasData[0]);
         properties.put("lat",latitute);
         properties.put("lon",longitude);
+        properties.put("email",userEmail);
         properties.put("created_at", currentTimeString);
         document.putProperties(properties);
 
@@ -298,10 +308,7 @@ public class UsbSerialService extends Service implements ChangeListener {
 
     private boolean refreshDeviceList() {
 
-        Log.d(TAG, "AAAAAAOnService");
-
-
-        Log.d(TAG, "Refreshing device list ...");
+        Log.d(TAG, "AAAAAAOnServiceRefreshingDeviceList");
 
         final List<UsbSerialDriver> drivers =
                 UsbSerialProber.getDefaultProber().findAllDrivers(mUsbManager);
