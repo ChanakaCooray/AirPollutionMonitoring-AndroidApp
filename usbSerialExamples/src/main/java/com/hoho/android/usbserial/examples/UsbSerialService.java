@@ -60,6 +60,8 @@ public class UsbSerialService extends Service implements ChangeListener {
     public static final int STATUS_ERROR = 2;
     public static final int STATUS_DEVICE_FOUND = 3;
     public static final int STATUS_ERROR_COUCHBASE = 4;
+    public static final int STATUS_GPS_OFF = 5;
+
 
     private boolean started = false;
 
@@ -83,6 +85,7 @@ public class UsbSerialService extends Service implements ChangeListener {
     private LocationManager locationManager;
     private double latitute;
     private double longitude;
+    private boolean locationFound = false;
 
     private final SerialInputOutputManager.Listener mListener =
             new SerialInputOutputManager.Listener() {
@@ -90,9 +93,6 @@ public class UsbSerialService extends Service implements ChangeListener {
                 @Override
                 public void onRunError(Exception e) {
                     Log.d(TAG, "Runner stopped.");
-
-//                    Toast.makeText(getApplicationContext(),"Runner stopped." ,Toast.LENGTH_LONG);
-                    //mDumpTextView.append("Runner stopped.");
                 }
 
                 @Override
@@ -102,7 +102,7 @@ public class UsbSerialService extends Service implements ChangeListener {
                     String[] gasValues = getGasValues(received);
                     bundle.putStringArray("result", gasValues);
                     try {
-                        if(gasValues[0]!=null) {
+                        if(gasValues[0]!=null && locationFound) {
                             createGasDataEntry(gasValues);
                         }
                         receiver.send(STATUS_FINISHED, bundle);
@@ -152,10 +152,13 @@ public class UsbSerialService extends Service implements ChangeListener {
 
             public void onStatusChanged(String provider, int status, Bundle extras) {}
 
-            public void onProviderEnabled(String provider) {}
+            public void onProviderEnabled(String provider) {
+                locationFound = true;
+            }
 
             public void onProviderDisabled(String provider) {
-
+                locationFound = false;
+                receiver.send(STATUS_GPS_OFF,Bundle.EMPTY);
             }
         };
 
@@ -190,29 +193,6 @@ public class UsbSerialService extends Service implements ChangeListener {
     @Override
     public void onDestroy() {
         // The service is no longer used and is being destroyed
-    }
-    //@Override
-    protected void onHandleIntent(Intent intent) {
-//        Log.d(TAG, "Service Started on handled");
-//        receiver = intent.getParcelableExtra("receiver");
-//        mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
-//        bundle = new Bundle();
-//
-//        receiver.send(STATUS_RUNNING, Bundle.EMPTY);
-//
-//        while (!started) {
-//            refreshDeviceList();
-//            try {
-//                Thread.sleep(1000);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//
-//
-//        Log.d(TAG, "Service Stopping!");
-
-
     }
 
     ////////////////////Couchbase Code////////////////
