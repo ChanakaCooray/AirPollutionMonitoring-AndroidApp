@@ -1,9 +1,13 @@
 package com.hoho.android.usbserial.examples;
 
 import android.app.IntentService;
+import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.location.Criteria;
@@ -103,7 +107,7 @@ public class UsbSerialService extends Service implements ChangeListener {
                     String[] gasValues = getGasValues(received);
                     bundle.putStringArray("result", gasValues);
                     try {
-                        if(gasValues[0]!=null && locationFound) {
+                        if(gasValues[0]!=null) {
                             createGasDataEntry(gasValues);
                             Log.d(TAG,"SENDCOUCH "+gasValues);
                         }else {
@@ -132,6 +136,7 @@ public class UsbSerialService extends Service implements ChangeListener {
         mExecutor = Executors.newSingleThreadExecutor();
 
     }
+    
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
@@ -144,6 +149,12 @@ public class UsbSerialService extends Service implements ChangeListener {
         bundle = new Bundle();
 
         receiver.send(STATUS_RUNNING, Bundle.EMPTY);
+
+
+        ///////////////
+        IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
+        registerReceiver(mUsbReceiver, filter);
+        //////////////
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
@@ -195,6 +206,7 @@ public class UsbSerialService extends Service implements ChangeListener {
         } catch (Exception e) {
             com.couchbase.lite.util.Log.e(TAG, "Error initializing CBLite", e);
         }
+
         return Service.START_NOT_STICKY;
     }
 
@@ -339,11 +351,42 @@ public class UsbSerialService extends Service implements ChangeListener {
 
     }
 
+    static boolean access_granted = false;
+    private static final String ACTION_USB_PERMISSION =
+            "com.android.example.USB_PERMISSION";
+    final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
+
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (ACTION_USB_PERMISSION.equals(action)) {
+                synchronized (this) {
+//                    UsbDevice device = (UsbDevice)intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+
+                    if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+
+                            access_granted = true;
+                    }
+                    else {
+//                        Log.d(TAG, "permission denied for device " + device);
+                    }
+                }
+            }
+        }
+    };
+
+
     protected void startConsole() {
         if (sPort == null) {
 
         } else {
             final UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+//            UsbManager.ACTION_USB_ACCESSORY_ATTACHED
+            PendingIntent mPermissionIntent;
+            mPermissionIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent("com.android.example.USB_PERMISSION"), 0);
+            usbManager.requestPermission(sPort.getDriver().getDevice(), mPermissionIntent);
+            Log.e(TAG, "CCCCCCCCCGranted");
+            while(!access_granted);
+            Log.e(TAG,"BBBBBBBGranted");
 
             UsbDeviceConnection connection = usbManager.openDevice(sPort.getDriver().getDevice());
             if (connection == null) {
