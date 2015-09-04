@@ -107,7 +107,7 @@ public class UsbSerialService extends Service implements ChangeListener {
                     String[] gasValues = getGasValues(received);
                     bundle.putStringArray("result", gasValues);
                     try {
-                        if(gasValues[0]!=null) {
+                        if(gasValues[0]!=null && locationFound) {
                             createGasDataEntry(gasValues);
                             Log.d(TAG,"SENDCOUCH "+gasValues);
                         }else {
