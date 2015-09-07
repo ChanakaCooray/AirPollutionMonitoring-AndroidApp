@@ -71,10 +71,10 @@
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:text="@string/carbon_monoxide"
         android:id="@+id/carbon_monoxide"
-        android:layout_marginTop="57dp"
         android:textColor="#ff1a5dff"
-        android:layout_below="@+id/co_value"
-        android:layout_centerHorizontal="true" />
+        android:layout_centerVertical="true"
+        android:layout_alignLeft="@+id/demoTitle"
+        android:layout_alignStart="@+id/demoTitle" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -83,8 +83,31 @@
         android:text="@string/co_value"
         android:id="@+id/co_value"
         android:textColor="#ff00d477"
+        android:layout_marginTop="54dp"
         android:layout_below="@+id/demoScroller"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="33dp" />
+        android:layout_toLeftOf="@+id/progressBarTitle"
+        android:layout_toStartOf="@+id/progressBarTitle" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="@string/sulpher_dioxide"
+        android:textColor="#ff1a5dff"
+        android:id="@+id/textView"
+        android:layout_alignTop="@+id/carbon_monoxide"
+        android:layout_alignRight="@+id/demoTitle"
+        android:layout_alignEnd="@+id/demoTitle" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textColor="#ff00d477"
+        android:text="NA"
+        android:id="@+id/so2_value"
+        android:layout_alignTop="@+id/co_value"
+        android:layout_alignRight="@+id/progressBarTitle"
+        android:layout_alignEnd="@+id/progressBarTitle" />
 
 </RelativeLayout>

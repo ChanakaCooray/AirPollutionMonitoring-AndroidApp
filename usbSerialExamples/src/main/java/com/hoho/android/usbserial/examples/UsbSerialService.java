@@ -86,7 +86,7 @@ public class UsbSerialService extends Service implements ChangeListener {
     public static final String byDateViewName = "byDate";
     public static final String SYNC_URL = "http://192.248.8.247:4985/sync_gateway";
     private String userEmail;
-
+    private String buffer;
     private LocationManager locationManager;
     private double latitute;
     private double longitude;
@@ -105,23 +105,25 @@ public class UsbSerialService extends Service implements ChangeListener {
 
                     String received = new String(data);
                     String[] gasValues = getGasValues(received);
-                    bundle.putStringArray("result", gasValues);
+
                     try {
-                        if(gasValues[0]!=null && locationFound) {
-                            createGasDataEntry(gasValues);
-                            Log.d(TAG,"SENDCOUCH "+gasValues);
-                        }else {
-                            Log.e(TAG,"SENDCOUCHERROR "+gasValues[0]+" "+locationFound+" "+userEmail);
+                        if (gasValues!=null && gasValues[0] != null && gasValues[1] != null) {
+                            bundle.putStringArray("result", gasValues);
+                            if (locationFound) {
+                                createGasDataEntry(gasValues);
+                                Log.e(TAG, "SENDCOUCH " + gasValues[0]+":"+gasValues[1]);
+                            }
+                        } else {
+                            Log.e(TAG, "SENDCOUCHERROR " + gasValues[0] + " "+gasValues[1] + locationFound + " " + userEmail);
                         }
                         receiver.send(STATUS_FINISHED, bundle);
                     } catch (Exception e) {
                         Log.e(TAG, "couchbase can't create entry");
-                        Log.e(TAG,"SENDCOUCHERROR EXCEPTION"+e.getMessage());
+                        Log.e(TAG, "SENDCOUCHERROR EXCEPTION" + e.getMessage());
                     }
 
                 }
             };
-
 
 
     @Override
@@ -136,7 +138,7 @@ public class UsbSerialService extends Service implements ChangeListener {
         mExecutor = Executors.newSingleThreadExecutor();
 
     }
-    
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
@@ -164,12 +166,13 @@ public class UsbSerialService extends Service implements ChangeListener {
                 // Called when a new location is found by the network location provider.
                 latitute = location.getLatitude();
                 longitude = location.getLongitude();
-                Log.d(TAG,"latitude"+latitute);
-                Log.d(TAG,"longitude"+longitude);
+                Log.d(TAG, "latitude" + latitute);
+                Log.d(TAG, "longitude" + longitude);
                 locationFound = true;
             }
 
-            public void onStatusChanged(String provider, int status, Bundle extras) {}
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+            }
 
             public void onProviderEnabled(String provider) {
                 locationFound = true;
@@ -177,7 +180,7 @@ public class UsbSerialService extends Service implements ChangeListener {
 
             public void onProviderDisabled(String provider) {
                 locationFound = false;
-                receiver.send(STATUS_GPS_OFF,Bundle.EMPTY);
+                receiver.send(STATUS_GPS_OFF, Bundle.EMPTY);
             }
         };
 
@@ -185,11 +188,11 @@ public class UsbSerialService extends Service implements ChangeListener {
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
 
 
-        Thread t = new Thread(){
+        Thread t = new Thread() {
             @Override
             public void run() {
                 Log.d(TAG, "Service Started on Command");
-                while(!started) {
+                while (!started) {
                     refreshDeviceList();
                     try {
                         Thread.sleep(1000);
@@ -283,7 +286,7 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         if (event.getError() != null) {
             receiver.send(STATUS_ERROR_COUCHBASE, Bundle.EMPTY);
-            Log.e(TAG,"COUCH_INIT_ERROR "+event.getError());
+            Log.e(TAG, "COUCH_INIT_ERROR " + event.getError());
         }
     }
 
@@ -304,14 +307,14 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         properties.put("_id", id);
         properties.put("CO", gasData[0]);
-        properties.put("lat",latitute);
-        properties.put("lon",longitude);
-        properties.put("email",userEmail);
+        properties.put("lat", latitute);
+        properties.put("lon", longitude);
+        properties.put("email", userEmail);
         properties.put("created_at", currentTimeString);
         document.putProperties(properties);
 
         com.couchbase.lite.util.Log.d(TAG, "Created new gas entry item with id: %s", document.getId());
-        Log.d(TAG,"CO value"+gasData[0]);
+        Log.d(TAG, "CO value" + gasData[0]);
         return document;
     }
 
@@ -364,9 +367,8 @@ public class UsbSerialService extends Service implements ChangeListener {
 
                     if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
 
-                            access_granted = true;
-                    }
-                    else {
+                        access_granted = true;
+                    } else {
 //                        Log.d(TAG, "permission denied for device " + device);
                     }
                 }
@@ -385,8 +387,8 @@ public class UsbSerialService extends Service implements ChangeListener {
             mPermissionIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent("com.android.example.USB_PERMISSION"), 0);
             usbManager.requestPermission(sPort.getDriver().getDevice(), mPermissionIntent);
             Log.e(TAG, "CCCCCCCCCGranted");
-            while(!access_granted);
-            Log.e(TAG,"BBBBBBBGranted");
+            while (!access_granted) ;
+            Log.e(TAG, "BBBBBBBGranted");
 
             UsbDeviceConnection connection = usbManager.openDevice(sPort.getDriver().getDevice());
             if (connection == null) {
@@ -434,16 +436,53 @@ public class UsbSerialService extends Service implements ChangeListener {
     }
 
     private String[] getGasValues(String data) {
+
+        String[] gasValues = new String[3];
+
+        Log.e(TAG,"REC"+data);
+        if(data.contains("*")){
+
+            if(data.length()==1){
+                gasValues = splitData(buffer);
+                buffer="";
+                return gasValues;
+            }else if(data.charAt(0)=='*'){
+                gasValues = splitData(buffer);
+                buffer = data.substring(data.indexOf("*")+1);
+                return gasValues;
+            }else if(data.charAt(data.length()-1)=='*'){
+                buffer+=data.substring(0, data.indexOf("*"));
+                gasValues = splitData(buffer);
+                buffer="";
+                return gasValues;
+            }else{
+                buffer+=data.substring(0, data.indexOf("*"));
+                gasValues = splitData(buffer);
+                buffer = data.substring(data.indexOf("*")+1);
+                return gasValues;
+            }
+
+        }else {
+            buffer+=data;
+        }
+        Log.e(TAG,"GOTVALUE"+gasValues[0]+":"+gasValues[1]);
+        return gasValues;
+    }
+
+    private String[] splitData(String data){
         String[] gasses = data.split(";");
         String[] gasValues = new String[3];
+
         int i = 0;
+        Log.d(TAG, "ALLDATA:" + data);
         for (String gas : gasses) {
-            Log.d(TAG, "GAS_VALUE" + gas);
+            Log.d(TAG, "GAS_VALUE:" + gas);
             String[] gasData = gas.split(":");
             if (gasData.length == 3) {
                 gasValues[i] = gasData[2];
 
             }
+            i += 1;
         }
         return gasValues;
     }

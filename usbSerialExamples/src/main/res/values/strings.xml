@@ -6,5 +6,6 @@
     <string name="refreshing">Searching Device...</string>
     <string name="carbon_monoxide">CO (ppm)</string>
     <string name="co_value">NA</string>
+    <string name="sulpher_dioxide">SO2 (ppm)</string>
 
 </resources>

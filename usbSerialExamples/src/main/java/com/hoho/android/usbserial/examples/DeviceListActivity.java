@@ -22,6 +22,8 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
     private TextView mDumpTextView;
     private TextView demoTitle;
     private TextView mCOValue;
+    private TextView mSO2Value;
+
     private ProgressBar mProgressBar;
     private ScrollView mScrollView;
     private UsbDataReceiver mReceiver;
@@ -35,6 +37,7 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
         demoTitle = (TextView) findViewById(R.id.demoTitle);
         mDumpTextView = (TextView) findViewById(R.id.consoleText);
         mCOValue = (TextView) findViewById(R.id.co_value);
+        mSO2Value = (TextView) findViewById(R.id.so2_value);
 
         mScrollView = (ScrollView) findViewById(R.id.demoScroller);
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
@@ -64,6 +67,7 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
 
     /**
      * Receive data from background process
+     *
      * @param resultCode
      * @param resultData
      */
@@ -83,7 +87,12 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
             case UsbSerialService.STATUS_FINISHED:
                 Log.d(TAG, "USB_STATUS_FINISHED");
                 String[] results = resultData.getStringArray("result");
-                mCOValue.setText(results[0]);
+                if (results != null) {
+                    Log.d(TAG, "RECEIVED " + results);
+
+                    mCOValue.setText(results[0]);
+                    mSO2Value.setText(results[1]);
+                }
                 break;
 
             case UsbSerialService.STATUS_ERROR:
