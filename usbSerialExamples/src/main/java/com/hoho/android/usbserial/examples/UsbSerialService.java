@@ -65,6 +65,7 @@ public class UsbSerialService extends Service implements ChangeListener {
     public static final int STATUS_DEVICE_FOUND = 3;
     public static final int STATUS_ERROR_COUCHBASE = 4;
     public static final int STATUS_GPS_OFF = 5;
+    public static final int STATUS_SYNC_DISABLED=6;
 
 
     private boolean started = false;
@@ -91,6 +92,7 @@ public class UsbSerialService extends Service implements ChangeListener {
     private double latitute;
     private double longitude;
     private boolean locationFound = false;
+    private boolean syncApp;
 
     private final SerialInputOutputManager.Listener mListener =
             new SerialInputOutputManager.Listener() {
@@ -107,14 +109,14 @@ public class UsbSerialService extends Service implements ChangeListener {
                     String[] gasValues = getGasValues(received);
 
                     try {
-                        if (gasValues!=null && gasValues[0] != null && gasValues[1] != null) {
+                        if (gasValues != null && gasValues[0] != null && gasValues[1] != null) {
                             bundle.putStringArray("result", gasValues);
-                            if (locationFound) {
+                            if (locationFound && syncApp) {
                                 createGasDataEntry(gasValues);
-                                Log.e(TAG, "SENDCOUCH " + gasValues[0]+":"+gasValues[1]);
+                                Log.e(TAG, "SENDCOUCH " + gasValues[0] + ":" + gasValues[1]);
                             }
                         } else {
-                            Log.e(TAG, "SENDCOUCHERROR " + gasValues[0] + " "+gasValues[1] + locationFound + " " + userEmail);
+                            Log.e(TAG, "SENDCOUCHERROR " + gasValues[0] + " " + gasValues[1] + locationFound + " " + userEmail);
                         }
                         receiver.send(STATUS_FINISHED, bundle);
                     } catch (Exception e) {
@@ -147,10 +149,14 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         userEmail = UserEmailFetcher.getEmail(this);
         receiver = intent.getParcelableExtra("receiver");
+        syncApp = intent.getBooleanExtra("sync",true);
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
         bundle = new Bundle();
 
         receiver.send(STATUS_RUNNING, Bundle.EMPTY);
+        if(!syncApp){
+            receiver.send(STATUS_SYNC_DISABLED,Bundle.EMPTY);
+        }
 
 
         ///////////////
@@ -205,7 +211,9 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         t.start();
         try {
-            startCBLite();
+            if (syncApp) {
+                startCBLite();
+            }
         } catch (Exception e) {
             com.couchbase.lite.util.Log.e(TAG, "Error initializing CBLite", e);
         }
@@ -439,37 +447,37 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         String[] gasValues = new String[3];
 
-        Log.e(TAG,"REC"+data);
-        if(data.contains("*")){
+        Log.e(TAG, "REC" + data);
+        if (data.contains("*")) {
 
-            if(data.length()==1){
+            if (data.length() == 1) {
                 gasValues = splitData(buffer);
-                buffer="";
+                buffer = "";
                 return gasValues;
-            }else if(data.charAt(0)=='*'){
+            } else if (data.charAt(0) == '*') {
                 gasValues = splitData(buffer);
-                buffer = data.substring(data.indexOf("*")+1);
+                buffer = data.substring(data.indexOf("*") + 1);
                 return gasValues;
-            }else if(data.charAt(data.length()-1)=='*'){
-                buffer+=data.substring(0, data.indexOf("*"));
+            } else if (data.charAt(data.length() - 1) == '*') {
+                buffer += data.substring(0, data.indexOf("*"));
                 gasValues = splitData(buffer);
-                buffer="";
+                buffer = "";
                 return gasValues;
-            }else{
-                buffer+=data.substring(0, data.indexOf("*"));
+            } else {
+                buffer += data.substring(0, data.indexOf("*"));
                 gasValues = splitData(buffer);
-                buffer = data.substring(data.indexOf("*")+1);
+                buffer = data.substring(data.indexOf("*") + 1);
                 return gasValues;
             }
 
-        }else {
-            buffer+=data;
+        } else {
+            buffer += data;
         }
-        Log.e(TAG,"GOTVALUE"+gasValues[0]+":"+gasValues[1]);
+        Log.e(TAG, "GOTVALUE" + gasValues[0] + ":" + gasValues[1]);
         return gasValues;
     }
 
-    private String[] splitData(String data){
+    private String[] splitData(String data) {
         String[] gasses = data.split(";");
         String[] gasValues = new String[3];
 
