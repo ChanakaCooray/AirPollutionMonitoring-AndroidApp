@@ -36,6 +36,7 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
 
     private ActionBar actionBar;
     private boolean syncData;
+    private int updateFrequency;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -62,6 +63,7 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
         SharedPreferences SP = PreferenceManager.getDefaultSharedPreferences(this);
 
         syncData = SP.getBoolean("syncData",true); //Get saved setting value of sync data
+
 
         Intent intent = new Intent(Intent.ACTION_SYNC, null, this, UsbSerialService.class);
         intent.putExtra("receiver", mReceiver);

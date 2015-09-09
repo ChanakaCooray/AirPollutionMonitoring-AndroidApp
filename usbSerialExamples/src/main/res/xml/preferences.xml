@@ -6,4 +6,6 @@
         android:summary="This option if selected will allow the application to sync sensor data with server"
         android:key="syncData" />
 
+
+
 </PreferenceScreen>
