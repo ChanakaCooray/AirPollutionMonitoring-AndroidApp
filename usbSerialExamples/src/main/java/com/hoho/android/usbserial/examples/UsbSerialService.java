@@ -94,6 +94,9 @@ public class UsbSerialService extends Service implements ChangeListener {
     private boolean locationFound = false;
     private boolean syncApp;
 
+    private Thread searchDevices;
+    private volatile boolean runningThreadSearch = false;
+
     private final SerialInputOutputManager.Listener mListener =
             new SerialInputOutputManager.Listener() {
 
@@ -138,7 +141,6 @@ public class UsbSerialService extends Service implements ChangeListener {
         // The service is being created
         mEntries = new ArrayList<>();
         mExecutor = Executors.newSingleThreadExecutor();
-
     }
 
     @Override
@@ -160,9 +162,15 @@ public class UsbSerialService extends Service implements ChangeListener {
 
 
         ///////////////
-        IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ACTION_USB_PERMISSION);
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
         registerReceiver(mUsbReceiver, filter);
         //////////////
+//        IntentFilter filter2 = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
+//        registerReceiver(mUsbReceiver2, filter2);
+        /////////////
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
@@ -193,11 +201,11 @@ public class UsbSerialService extends Service implements ChangeListener {
         // Register the listener with the Location Manager to receive location updates
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
 
-
-        Thread t = new Thread() {
+        searchDevices = new Thread() {
             @Override
             public void run() {
                 Log.d(TAG, "Service Started on Command");
+                runningThreadSearch = true;
                 while (!started) {
                     refreshDeviceList();
                     try {
@@ -206,10 +214,12 @@ public class UsbSerialService extends Service implements ChangeListener {
                         e.printStackTrace();
                     }
                 }
+                runningThreadSearch = false;
             }
         };
 
-        t.start();
+        searchDevices.start();
+
         try {
             if (syncApp) {
                 startCBLite();
@@ -366,41 +376,66 @@ public class UsbSerialService extends Service implements ChangeListener {
     private static final String ACTION_USB_PERMISSION =
             "com.android.example.USB_PERMISSION";
     final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
-
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (ACTION_USB_PERMISSION.equals(action)) {
                 synchronized (this) {
-//                    UsbDevice device = (UsbDevice)intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
-
                     if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-
                         access_granted = true;
                     } else {
-//                        Log.d(TAG, "permission denied for device " + device);
+                        Log.d(TAG, "permission denied for device");
                     }
                 }
+            }
+
+            if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
+                Log.d(TAG, "detacheddddddddddddddddddddddddddddddddddddddddddd");
+                synchronized (this) {
+                    if (!runningThreadSearch) {
+                        started = false;
+                        access_granted = false;
+                        searchDevices = new Thread() {
+                            @Override
+                            public void run() {
+                                Log.d(TAG, "Service Started on Command");
+                                runningThreadSearch = true;
+                                while (!started) {
+                                    refreshDeviceList();
+                                    try {
+                                        Thread.sleep(1000);
+                                    } catch (InterruptedException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                                runningThreadSearch = false;
+                            }
+                        };
+                        searchDevices.start();
+                    }
+                }
+            }
+            if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
+                Log.d(TAG,"attacheddddddddddddddddddddddddddddddddddddddddddd");
             }
         }
     };
 
-
-    protected void startConsole() {
+    protected synchronized void startConsole() {
         if (sPort == null) {
-
+            Log.e(TAG,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
         } else {
             final UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 //            UsbManager.ACTION_USB_ACCESSORY_ATTACHED
             PendingIntent mPermissionIntent;
             mPermissionIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent("com.android.example.USB_PERMISSION"), 0);
             usbManager.requestPermission(sPort.getDriver().getDevice(), mPermissionIntent);
-            Log.e(TAG, "CCCCCCCCCGranted");
+            Log.d(TAG, "CCCCCCCCCGranted");
             while (!access_granted) ;
-            Log.e(TAG, "BBBBBBBGranted");
+            Log.d(TAG, "BBBBBBBGranted");
 
             UsbDeviceConnection connection = usbManager.openDevice(sPort.getDriver().getDevice());
             if (connection == null) {
-
+                Log.e(TAG,"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
                 return;
             }
 
