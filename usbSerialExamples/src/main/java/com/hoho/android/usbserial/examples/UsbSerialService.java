@@ -1,12 +1,15 @@
 package com.hoho.android.usbserial.examples;
 
 import android.app.IntentService;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.app.TaskStackBuilder;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
@@ -14,9 +17,12 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.ResultReceiver;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -65,7 +71,7 @@ public class UsbSerialService extends Service implements ChangeListener {
     public static final int STATUS_DEVICE_FOUND = 3;
     public static final int STATUS_ERROR_COUCHBASE = 4;
     public static final int STATUS_GPS_OFF = 5;
-    public static final int STATUS_SYNC_DISABLED=6;
+    public static final int STATUS_SYNC_DISABLED = 6;
 
 
     private boolean started = false;
@@ -78,9 +84,11 @@ public class UsbSerialService extends Service implements ChangeListener {
     private static final String TAG = "UsbSerialService";
     private Bundle bundle;
     private ResultReceiver receiver;
-
+    private NotificationManager mNotifyMgr;
     protected static Manager manager;
     private Database database;
+    private NotificationCompat.Builder mBuilderAlert;
+
 
     public static final String DATABASE_NAME = "grocery-sync";
     public static final String designDocName = "grocery-local";
@@ -93,6 +101,9 @@ public class UsbSerialService extends Service implements ChangeListener {
     private double longitude;
     private boolean locationFound = false;
     private boolean syncApp;
+    private boolean notificationGiven = false;
+    private int attenntionNotificationID = 1;
+
 
     private final SerialInputOutputManager.Listener mListener =
             new SerialInputOutputManager.Listener() {
@@ -104,19 +115,22 @@ public class UsbSerialService extends Service implements ChangeListener {
 
                 @Override
                 public void onNewData(final byte[] data) {
-
+                    Log.e(TAG, "ON new Data called");
                     String received = new String(data);
                     String[] gasValues = getGasValues(received);
 
                     try {
                         if (gasValues != null && gasValues[0] != null && gasValues[1] != null) {
+
                             bundle.putStringArray("result", gasValues);
+                            checkCritical(gasValues);
+
                             if (locationFound && syncApp) {
                                 createGasDataEntry(gasValues);
                                 Log.e(TAG, "SENDCOUCH " + gasValues[0] + ":" + gasValues[1]);
                             }
                         } else {
-                            Log.e(TAG, "SENDCOUCHERROR " + gasValues[0] + " " + gasValues[1] + locationFound + " " + userEmail);
+                            Log.e(TAG, "SENDCOUCHERROR ");
                         }
                         receiver.send(STATUS_FINISHED, bundle);
                     } catch (Exception e) {
@@ -126,6 +140,32 @@ public class UsbSerialService extends Service implements ChangeListener {
 
                 }
             };
+
+    private void checkCritical(String[] gasValues) {
+        int co = Integer.parseInt(gasValues[0].trim());
+        int so2 = Integer.parseInt(gasValues[1].trim());
+
+        String gasses = "";
+        if(co> AppConstants.CO_MAX){
+            gasses+="CO ";
+        }
+        if(so2 > AppConstants.SO_MAX){
+            gasses+="SO2 ";
+        }
+
+
+        if (!notificationGiven && (co >= AppConstants.CO_MAX || so2 >= AppConstants.SO_MAX)) {
+            mBuilderAlert.setContentTitle("Attention! High "+gasses);
+            mNotifyMgr.notify(attenntionNotificationID, mBuilderAlert.build());
+            notificationGiven = true;
+            Log.e(TAG,"Notification created");
+
+        } else if (notificationGiven && (co < AppConstants.CO_MAX && so2 < AppConstants.SO_MAX)) {
+            mNotifyMgr.cancel(attenntionNotificationID);
+            notificationGiven = false;
+            Log.e(TAG,"Notification removed");
+        }
+    }
 
 
     @Override
@@ -149,13 +189,31 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         userEmail = UserEmailFetcher.getEmail(this);
         receiver = intent.getParcelableExtra("receiver");
-        syncApp = intent.getBooleanExtra("sync",true);
+        syncApp = intent.getBooleanExtra("sync", true);
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
         bundle = new Bundle();
 
+        Uri uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        mNotifyMgr = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        Intent resultIntent = new Intent(this, DeviceListActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, resultIntent, PendingIntent.FLAG_NO_CREATE);
+
+        mBuilderAlert = new NotificationCompat.Builder(this)
+                .setSmallIcon(R.drawable.ic_launcher)
+                .setContentTitle("Attention! Hazard Gases Detected")
+                .setContentText("Leave the area immediately")
+                .setColor(Color.RED)
+                .setSound(uri).setVibrate(new long[]{1000, 1000, 1000, 1000, 1000})
+                .setContentIntent(pendingIntent);
+
+
+        //mNotifyMgr.notify(attenntionNotificationID, mBuilderAlert.build());
+
+
         receiver.send(STATUS_RUNNING, Bundle.EMPTY);
-        if(!syncApp){
-            receiver.send(STATUS_SYNC_DISABLED,Bundle.EMPTY);
+        if (!syncApp) {
+            receiver.send(STATUS_SYNC_DISABLED, Bundle.EMPTY);
         }
 
 
@@ -224,7 +282,10 @@ public class UsbSerialService extends Service implements ChangeListener {
     @Override
     public void onDestroy() {
         // The service is no longer used and is being destroyed
+        mNotifyMgr.cancel(attenntionNotificationID);
+        Log.e(TAG, "Service destroyed");
     }
+
 
     ////////////////////Couchbase Code////////////////
     protected void startCBLite() throws Exception {
@@ -387,7 +448,6 @@ public class UsbSerialService extends Service implements ChangeListener {
 
     protected void startConsole() {
         if (sPort == null) {
-
         } else {
             final UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 //            UsbManager.ACTION_USB_ACCESSORY_ATTACHED
@@ -400,7 +460,6 @@ public class UsbSerialService extends Service implements ChangeListener {
 
             UsbDeviceConnection connection = usbManager.openDevice(sPort.getDriver().getDevice());
             if (connection == null) {
-
                 return;
             }
 
