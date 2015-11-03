@@ -41,7 +41,7 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
     private UsbDataReceiver mReceiver;
 
     private ActionBar actionBar;
-    private boolean syncData;
+    //private boolean syncData;
     private int updateFrequency;
     private NotificationCompat.Builder mBuilderInfo;
     private NotificationManager mNotifyMgr;
@@ -72,7 +72,7 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
         SharedPreferences SP = PreferenceManager.getDefaultSharedPreferences(this);
 
-        syncData = SP.getBoolean("syncData", true); //Get saved setting value of sync data
+        //syncData = SP.getBoolean("syncData", true); //Get saved setting value of sync data
 
         mBuilderInfo = new NotificationCompat.Builder(this)
                 .setSmallIcon(R.drawable.ic_launcher)
@@ -82,14 +82,11 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
 
         Intent intent = new Intent(Intent.ACTION_SYNC, null, this, UsbSerialService.class);
         intent.putExtra("receiver", mReceiver);
-        intent.putExtra("sync", syncData);
+        //intent.putExtra("sync", syncData); //syncApp in Service
         startService(intent);
 
     }
 
-    private void hideProgressBar() {
-        mProgressBar.setVisibility(View.INVISIBLE);
-    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
