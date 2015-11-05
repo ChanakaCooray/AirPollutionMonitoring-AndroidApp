@@ -22,6 +22,7 @@ import android.media.RingtoneManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.nfc.Tag;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.ResultReceiver;
@@ -110,6 +111,7 @@ public class UsbSerialService extends Service implements ChangeListener {
     private boolean notificationGiven = false;
     private int attenntionNotificationID = 1;
     private boolean startedSyncService = false;
+    private boolean insertData=false;
 
     private final SerialInputOutputManager.Listener mListener =
             new SerialInputOutputManager.Listener() {
@@ -131,7 +133,7 @@ public class UsbSerialService extends Service implements ChangeListener {
                             bundle.putStringArray("result", gasValues);
                             checkCritical(gasValues);
 
-                            if (locationFound && syncApp != 0) {
+                            if (locationFound && insertData) {
                                 createGasDataEntry(gasValues);
                                 Log.e(TAG, "SENDCOUCH " + gasValues[0] + ":" + gasValues[1]);
                             }
@@ -201,12 +203,35 @@ public class UsbSerialService extends Service implements ChangeListener {
                             ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
                             NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
                             if (mWifi.isConnected()) {
-                                startSync(true);
+                                Log.e(TAG, "WiFi enabled "+startedSyncService);
+                                if (!startedSyncService) {
+                                    startSync(true);
+                                }
+                            } else {
+                                Log.e(TAG, "WiFi not enabled "+startedSyncService);
+                                if (startedSyncService) {
+                                    startSync(false);
+                                    Log.e(TAG, "WiFi not enabled disabeling sync");
+                                }
                             }
+
                         } else if (syncApp == 1) {
-                            startSync(true);
+                            Log.e(TAG, "WiFi selected 1 " + startedSyncService);
+
+                            if (!startedSyncService) {
+
+                                try {
+
+                                    startSync(true);
+                                    Log.e(TAG,"WiFi 1 selected starting");
+                                } catch (Exception e) {
+                                    Log.e(TAG, "WiFi exception " + e.getMessage());
+
+                                }
+                            }
                         }
                     } else {
+                        Log.e(TAG, "WiFi never " + startedSyncService);
                         if (startedSyncService) {
                             startSync(false);
                         }
@@ -312,9 +337,9 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         t.start();
         try {
-            if (syncApp != 0) {
-                startCBLite();
-            }
+
+            startCBLite();
+
         } catch (Exception e) {
             com.couchbase.lite.util.Log.e(TAG, "Error initializing CBLite", e);
         }
@@ -385,7 +410,7 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         Replication pushReplication = database.createPushReplication(syncUrl);
         pushReplication.setContinuous(true);
-
+        insertData = start;
         if (start) {
             pullReplication.start();
             pushReplication.start();
@@ -393,10 +418,13 @@ public class UsbSerialService extends Service implements ChangeListener {
             pullReplication.addChangeListener(this);
             pushReplication.addChangeListener(this);
             startedSyncService = true;
+            Log.e(TAG,"WiFi service sync "+start);
         } else {
             pullReplication.stop();
             pushReplication.stop();
             startedSyncService = false;
+            Log.e(TAG,"WiFi service sync "+start);
+
         }
 
     }
