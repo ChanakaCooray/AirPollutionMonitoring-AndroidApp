@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:circular="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#fffdffff">
@@ -109,5 +111,30 @@
         android:layout_alignTop="@+id/co_value"
         android:layout_alignRight="@+id/progressBarTitle"
         android:layout_alignEnd="@+id/progressBarTitle" />
+
+
+    <com.lylc.widget.circularprogressbar.CircularProgressBar
+        android:id="@+id/coBar"
+        style="@style/Widget.ProgressBar.CircularProgressBar"
+        android:layout_width="110dip"
+        android:layout_height="110dip"
+        circular:cpb_subtitle="ppm"
+        circular:cpb_title="CO"
+        android:layout_alignTop="@+id/so2Bar"
+        android:layout_alignRight="@+id/carbon_monoxide"
+        android:layout_alignEnd="@+id/carbon_monoxide" />
+
+    <com.lylc.widget.circularprogressbar.CircularProgressBar
+        android:id="@+id/so2Bar"
+        style="@style/Widget.ProgressBar.CircularProgressBar"
+        android:layout_width="110dip"
+        android:layout_height="110dip"
+        circular:cpb_subtitle="ppm"
+        circular:cpb_title="SO2"
+        android:layout_marginTop="51dp"
+        android:layout_below="@+id/textView"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
+
 
 </RelativeLayout>

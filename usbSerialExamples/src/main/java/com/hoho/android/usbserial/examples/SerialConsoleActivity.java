@@ -116,7 +116,6 @@ public class SerialConsoleActivity extends Activity {
                     on=true;
                 }
                 mSerialIoManager.writeAsync(s.getBytes());
-
             }
         });
     }

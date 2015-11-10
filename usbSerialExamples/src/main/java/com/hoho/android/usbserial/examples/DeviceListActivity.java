@@ -17,6 +17,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.lylc.widget.circularprogressbar.CircularProgressBar;
+
 /**
  * Main activity in application which start background process to handle USB data receive and sync.
  */
@@ -38,6 +40,9 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
     private boolean syncData;
     private int updateFrequency;
 
+    CircularProgressBar coBar;
+    CircularProgressBar so2Bar;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,6 +60,8 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
         mReceiver = new UsbDataReceiver(new Handler());
         mReceiver.setReceiver(this);
 
+        coBar = (CircularProgressBar) findViewById(R.id.coBar);
+        so2Bar = (CircularProgressBar) findViewById(R.id.so2Bar);
 
         actionBar = getActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
@@ -132,6 +139,9 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
 
                     mCOValue.setText(results[0]);
                     mSO2Value.setText(results[1]);
+
+                    coBar.setProgress(Integer.parseInt(results[0])/10);
+                    so2Bar.setProgress(Integer.parseInt(results[1]) / 10);
                 }
                 break;
 
