@@ -16,5 +16,6 @@ allprojects {
             url "http://files.couchbase.com/maven2/"
         }
         mavenLocal()
+        jcenter()
     }
 }
