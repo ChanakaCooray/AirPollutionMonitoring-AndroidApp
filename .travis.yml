@@ -1,5 +1,16 @@
-install:
-  - TERM=dumb ./gradlew assemble
+language: android
+jdk: oraclejdk8
+
+android:
+  components:
+  - android-22
+  - build-tools-21.1.2
 
 script:
-  - TERM=dumb ./gradlew check
+ - ./gradlew clean build  --stacktrace
+
+after_success:
+ - ./gradlew
+
+notifications:
+  email: change
