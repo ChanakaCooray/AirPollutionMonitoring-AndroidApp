@@ -30,7 +30,7 @@ dependencies {
         mavenCentral()
     }
 
-    compile 'com.android.support:support-v4:22.0.0'
+//    compile 'com.android.support:support-v4:22.0.0'
 
     compile 'com.couchbase.lite:couchbase-lite-android:1.1.0-17'
 
