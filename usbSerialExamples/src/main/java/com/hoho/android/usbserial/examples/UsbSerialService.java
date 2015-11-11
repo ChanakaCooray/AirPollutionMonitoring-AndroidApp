@@ -114,7 +114,7 @@ public class UsbSerialService extends Service implements ChangeListener {
     private boolean insertData=false;
     private Thread searchDevices;
     private volatile boolean runningThreadSearch = false;
-
+    private Replication pushReplication;
     private final SerialInputOutputManager.Listener mListener =
             new SerialInputOutputManager.Listener() {
 
@@ -375,7 +375,6 @@ public class UsbSerialService extends Service implements ChangeListener {
         Manager.enableLogging(com.couchbase.lite.util.Log.TAG_DATABASE, com.couchbase.lite.util.Log.VERBOSE);
 
         manager = new Manager(new AndroidContext(this), Manager.DEFAULT_OPTIONS);
-
         //install a view definition needed by the application
         database = manager.getDatabase(DATABASE_NAME);
         com.couchbase.lite.View viewItemsByDate = database.getView(String.format("%s/%s", designDocName, byDateViewName));
@@ -413,22 +412,24 @@ public class UsbSerialService extends Service implements ChangeListener {
             throw new RuntimeException(e);
         }
 
-        Replication pullReplication = database.createPullReplication(syncUrl);
-        pullReplication.setContinuous(true);
+//        Replication pullReplication = database.createPullReplication(syncUrl);
+//        pullReplication.setContinuous(true);
+        if(pushReplication==null){
+            pushReplication = database.createPushReplication(syncUrl);
+            pushReplication.setContinuous(true);
+            pushReplication.addChangeListener(this);
 
-        Replication pushReplication = database.createPushReplication(syncUrl);
-        pushReplication.setContinuous(true);
+        }
         insertData = start;
         if (start) {
-            pullReplication.start();
+            //pullReplication.start();
             pushReplication.start();
 
-            pullReplication.addChangeListener(this);
-            pushReplication.addChangeListener(this);
+            //pullReplication.addChangeListener(this);
             startedSyncService = true;
             Log.e(TAG,"WiFi service sync "+start);
         } else {
-            pullReplication.stop();
+            //pullReplication.stop();
             pushReplication.stop();
             startedSyncService = false;
             Log.e(TAG,"WiFi service sync "+start);
@@ -444,11 +445,13 @@ public class UsbSerialService extends Service implements ChangeListener {
         if (!replication.isRunning()) {
             String msg = String.format("Replicator %s not running", replication);
             com.couchbase.lite.util.Log.d(TAG, msg);
+            Log.e(TAG, "LISTNER " + msg);
         } else {
             int processed = replication.getCompletedChangesCount();
             int total = replication.getChangesCount();
             String msg = String.format("Replicator processed %d / %d", processed, total);
             com.couchbase.lite.util.Log.d(TAG, msg);
+            Log.e(TAG,"LISTNER "+msg);
         }
 
         if (event.getError() != null) {
