@@ -11,7 +11,8 @@
         android:entries="@array/syncFrequency"
         android:summary="Application Sync Methhod"
         android:entryValues="@array/syncFrequencyValues"
-        android:title="Set application sync method" />
+        android:title="Set application sync method"
+        android:defaultValue="1"/>
 
 
 </PreferenceScreen>
