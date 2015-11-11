@@ -33,6 +33,7 @@ import android.graphics.Typeface;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.animation.LinearInterpolator;
 import android.widget.ProgressBar;
@@ -124,8 +125,8 @@ public class CircularProgressBar extends ProgressBar{
 		if(t!=null)
 			mSubTitle = t;
 
-		mStrokeWidth = a.getInt(R.styleable.CircularProgressBar_cpb_strokeWidth, STROKE_WIDTH);
-
+//		mStrokeWidth = a.getInt(R.styleable.CircularProgressBar_cpb_strokeWidth, STROKE_WIDTH);
+		mStrokeWidth = (int)TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, getResources().getDisplayMetrics());
 		a.recycle();
 
 
@@ -137,13 +138,13 @@ public class CircularProgressBar extends ProgressBar{
 		mBackgroundColorPaint.setStyle(Paint.Style.STROKE);
 		mBackgroundColorPaint.setStrokeWidth(mStrokeWidth);
 
-		mTitlePaint.setTextSize(40);
+		mTitlePaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 40, getResources().getDisplayMetrics()));
 		mTitlePaint.setStyle(Style.FILL);
 		mTitlePaint.setAntiAlias(true);
 		mTitlePaint.setTypeface(Typeface.create("Roboto-Thin", Typeface.NORMAL));
 		mTitlePaint.setShadowLayer(0.1f, 0, 1, Color.GRAY);
 
-		mSubtitlePaint.setTextSize(20); 
+		mSubtitlePaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 20, getResources().getDisplayMetrics()));
 		mSubtitlePaint.setStyle(Style.FILL);
 		mSubtitlePaint.setAntiAlias(true);
 		mSubtitlePaint.setTypeface(Typeface.create("Roboto-Thin", Typeface.BOLD));

@@ -153,6 +153,9 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
 
                     coBar.setProgress(Integer.parseInt(results[0])/10);
                     so2Bar.setProgress(Integer.parseInt(results[1]) / 10);
+
+                    coBar.setTitle(results[0]);
+                    so2Bar.setTitle(results[1]);
                 }
                 break;
 
