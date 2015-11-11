@@ -66,8 +66,8 @@ public class SerialConsoleActivity extends Activity {
     private static UsbSerialPort sPort = null;
 
     private TextView mTitleTextView;
-    private TextView mDumpTextView;
-    private ScrollView mScrollView;
+//    private TextView mDumpTextView;
+//    private ScrollView mScrollView;
     boolean on=true;
 
 
@@ -100,24 +100,24 @@ public class SerialConsoleActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.serial_console);
         mTitleTextView = (TextView) findViewById(R.id.demoTitle);
-        mDumpTextView = (TextView) findViewById(R.id.consoleText);
-        mScrollView = (ScrollView) findViewById(R.id.demoScroller);
+//        mDumpTextView = (TextView) findViewById(R.id.consoleText);
+//        mScrollView = (ScrollView) findViewById(R.id.demoScroller);
 
-        Button b = (Button)findViewById(R.id.button);
-        b.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String s="";
-                if(on){
-                    s="off";
-                    on=false;
-                }else {
-                    s="on";
-                    on=true;
-                }
-                mSerialIoManager.writeAsync(s.getBytes());
-            }
-        });
+//        Button b = (Button)findViewById(R.id.button);
+//        b.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                String s="";
+//                if(on){
+//                    s="off";
+//                    on=false;
+//                }else {
+//                    s="on";
+//                    on=true;
+//                }
+//                mSerialIoManager.writeAsync(s.getBytes());
+//            }
+//        });
     }
 
     @Override
@@ -194,15 +194,14 @@ public class SerialConsoleActivity extends Activity {
         String a = new String(data);
         final String message = "Read " + data.length + " bytes: \n"
                 + Arrays.toString(data) +"=====   "+a+"  ======" + "\n\n";
-        mDumpTextView.append(message);
-        mScrollView.smoothScrollTo(0, mDumpTextView.getBottom());
+//        mDumpTextView.append(message);
+//        mScrollView.smoothScrollTo(0, mDumpTextView.getBottom());
     }
 
     /**
      * Starts the activity, using the supplied driver instance.
      *
      * @param context
-     * @param driver
      */
     static void show(Context context, UsbSerialPort port) {
         sPort = port;

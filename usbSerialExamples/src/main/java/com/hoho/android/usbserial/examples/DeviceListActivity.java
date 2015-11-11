@@ -27,13 +27,13 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
     private final String TAG = DeviceListActivity.class.getSimpleName();
 
     private TextView mProgressBarTitle;
-    private TextView mDumpTextView;
+//    private TextView mDumpTextView;
     private TextView demoTitle;
-    private TextView mCOValue;
-    private TextView mSO2Value;
+//    private TextView mCOValue;
+//    private TextView mSO2Value;
 
     private ProgressBar mProgressBar;
-    private ScrollView mScrollView;
+//    private ScrollView mScrollView;
     private UsbDataReceiver mReceiver;
 
     private ActionBar actionBar;
@@ -42,6 +42,7 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
 
     CircularProgressBar coBar;
     CircularProgressBar so2Bar;
+    CircularProgressBar noxBar;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -50,11 +51,11 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
 
         mProgressBarTitle = (TextView) findViewById(R.id.progressBarTitle);
         demoTitle = (TextView) findViewById(R.id.demoTitle);
-        mDumpTextView = (TextView) findViewById(R.id.consoleText);
-        mCOValue = (TextView) findViewById(R.id.co_value);
-        mSO2Value = (TextView) findViewById(R.id.so2_value);
-
-        mScrollView = (ScrollView) findViewById(R.id.demoScroller);
+//        mDumpTextView = (TextView) findViewById(R.id.consoleText);
+//        mCOValue = (TextView) findViewById(R.id.co_value);
+//        mSO2Value = (TextView) findViewById(R.id.so2_value);
+//
+//        mScrollView = (ScrollView) findViewById(R.id.demoScroller);
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
 
         mReceiver = new UsbDataReceiver(new Handler());
@@ -62,6 +63,16 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
 
         coBar = (CircularProgressBar) findViewById(R.id.coBar);
         so2Bar = (CircularProgressBar) findViewById(R.id.so2Bar);
+        noxBar = (CircularProgressBar) findViewById(R.id.noxBar);
+
+        coBar.setTitle("0");
+        coBar.setSubTitle("ppm");
+
+        so2Bar.setTitle("0");
+        so2Bar.setSubTitle("ppm");
+
+        noxBar.setTitle("0");
+        noxBar.setSubTitle("ppm");
 
         actionBar = getActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
@@ -137,8 +148,8 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
                 if (results != null) {
                     Log.d(TAG, "RECEIVED " + results);
 
-                    mCOValue.setText(results[0]);
-                    mSO2Value.setText(results[1]);
+//                    mCOValue.setText(results[0]);
+//                    mSO2Value.setText(results[1]);
 
                     coBar.setProgress(Integer.parseInt(results[0])/10);
                     so2Bar.setProgress(Integer.parseInt(results[1]) / 10);

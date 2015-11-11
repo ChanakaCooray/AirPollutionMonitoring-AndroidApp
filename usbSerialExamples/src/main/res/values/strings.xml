@@ -4,8 +4,8 @@
     <string name="app_title">Air Pollution Monitoring</string>
     <string name="app_name">Air Pollution Monitoring</string>
     <string name="refreshing">Searching Device...</string>
-    <string name="carbon_monoxide">CO (ppm)</string>
+    <string name="carbon_monoxide">CO</string>
     <string name="co_value">NA</string>
-    <string name="sulpher_dioxide">SO2 (ppm)</string>
-
+    <string name="sulpher_dioxide">SO2</string>
+    <string name="nitrigon_oxide">NOx</string>
 </resources>
