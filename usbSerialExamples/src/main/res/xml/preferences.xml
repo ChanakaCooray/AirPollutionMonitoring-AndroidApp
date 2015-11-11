@@ -1,7 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-    <CheckBoxPreference android:title="Application Sync"
-        android:defaultValue="true"
-        android:summary="This option if selected will allow the application to sync sensor data with server"
-        android:key="syncData" />
+
+    <!--<CheckBoxPreference android:title="Application Sync"-->
+        <!--android:defaultValue="true"-->
+        <!--android:summary="This option if selected will allow the application to sync sensor data with server"-->
+        <!--android:key="syncData" />-->
+
+    <ListPreference
+        android:key="prefSync"
+        android:entries="@array/syncFrequency"
+        android:summary="Application Sync Methhod"
+        android:entryValues="@array/syncFrequencyValues"
+        android:title="Set application sync method" />
+
+
 </PreferenceScreen>

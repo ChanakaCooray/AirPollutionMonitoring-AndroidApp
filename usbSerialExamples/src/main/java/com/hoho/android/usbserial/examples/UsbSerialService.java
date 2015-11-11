@@ -1,12 +1,16 @@
 package com.hoho.android.usbserial.examples;
 
 import android.app.IntentService;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.app.TaskStackBuilder;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
@@ -14,9 +18,18 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.RingtoneManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.Uri;
+import android.nfc.Tag;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.ResultReceiver;
+import android.preference.ListPreference;
+import android.preference.PreferenceActivity;
+import android.preference.PreferenceManager;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -65,7 +78,7 @@ public class UsbSerialService extends Service implements ChangeListener {
     public static final int STATUS_DEVICE_FOUND = 3;
     public static final int STATUS_ERROR_COUCHBASE = 4;
     public static final int STATUS_GPS_OFF = 5;
-    public static final int STATUS_SYNC_DISABLED=6;
+    public static final int STATUS_SYNC_DISABLED = 6;
 
 
     private boolean started = false;
@@ -78,9 +91,11 @@ public class UsbSerialService extends Service implements ChangeListener {
     private static final String TAG = "UsbSerialService";
     private Bundle bundle;
     private ResultReceiver receiver;
-
+    private NotificationManager mNotifyMgr;
     protected static Manager manager;
     private Database database;
+    private NotificationCompat.Builder mBuilderAlert;
+
 
     public static final String DATABASE_NAME = "grocery-sync";
     public static final String designDocName = "grocery-local";
@@ -92,8 +107,11 @@ public class UsbSerialService extends Service implements ChangeListener {
     private double latitute;
     private double longitude;
     private boolean locationFound = false;
-    private boolean syncApp;
-
+    private int syncApp;
+    private boolean notificationGiven = false;
+    private int attenntionNotificationID = 1;
+    private boolean startedSyncService = false;
+    private boolean insertData=false;
     private Thread searchDevices;
     private volatile boolean runningThreadSearch = false;
 
@@ -107,19 +125,22 @@ public class UsbSerialService extends Service implements ChangeListener {
 
                 @Override
                 public void onNewData(final byte[] data) {
-
+                    Log.e(TAG, "ON new Data called");
                     String received = new String(data);
                     String[] gasValues = getGasValues(received);
 
                     try {
                         if (gasValues != null && gasValues[0] != null && gasValues[1] != null) {
+
                             bundle.putStringArray("result", gasValues);
-                            if (locationFound && syncApp) {
+                            checkCritical(gasValues);
+
+                            if (locationFound && insertData) {
                                 createGasDataEntry(gasValues);
                                 Log.e(TAG, "SENDCOUCH " + gasValues[0] + ":" + gasValues[1]);
                             }
                         } else {
-                            Log.e(TAG, "SENDCOUCHERROR " + gasValues[0] + " " + gasValues[1] + locationFound + " " + userEmail);
+                            Log.e(TAG, "SENDCOUCHERROR ");
                         }
                         receiver.send(STATUS_FINISHED, bundle);
                     } catch (Exception e) {
@@ -129,6 +150,32 @@ public class UsbSerialService extends Service implements ChangeListener {
 
                 }
             };
+
+    private void checkCritical(String[] gasValues) {
+        int co = Integer.parseInt(gasValues[0].trim());
+        int so2 = Integer.parseInt(gasValues[1].trim());
+
+        String gasses = "";
+        if (co > AppConstants.CO_MAX) {
+            gasses += "CO ";
+        }
+        if (so2 > AppConstants.SO_MAX) {
+            gasses += "SO2 ";
+        }
+
+
+        if (!notificationGiven && (co >= AppConstants.CO_MAX || so2 >= AppConstants.SO_MAX)) {
+            mBuilderAlert.setContentTitle("Attention! High " + gasses);
+            mNotifyMgr.notify(attenntionNotificationID, mBuilderAlert.build());
+            notificationGiven = true;
+            Log.e(TAG, "Notification created");
+
+        } else if (notificationGiven && (co < AppConstants.CO_MAX && so2 < AppConstants.SO_MAX)) {
+            mNotifyMgr.cancel(attenntionNotificationID);
+            notificationGiven = false;
+            Log.e(TAG, "Notification removed");
+        }
+    }
 
 
     @Override
@@ -141,7 +188,58 @@ public class UsbSerialService extends Service implements ChangeListener {
         // The service is being created
         mEntries = new ArrayList<>();
         mExecutor = Executors.newSingleThreadExecutor();
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
+        sp.registerOnSharedPreferenceChangeListener(spChanged);
     }
+
+    SharedPreferences.OnSharedPreferenceChangeListener spChanged = new
+            SharedPreferences.OnSharedPreferenceChangeListener() {
+                @Override
+                public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
+                                                      String key) {
+                    syncApp = Integer.parseInt(sharedPreferences.getString(key, "1"));
+                    Log.e(TAG, "SYNC111 Changed " + syncApp);
+
+                    if (syncApp != 0) {
+                        if (syncApp == 2) {
+                            ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                            NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+                            if (mWifi.isConnected()) {
+                                Log.e(TAG, "WiFi enabled "+startedSyncService);
+                                if (!startedSyncService) {
+                                    startSync(true);
+                                }
+                            } else {
+                                Log.e(TAG, "WiFi not enabled "+startedSyncService);
+                                if (startedSyncService) {
+                                    startSync(false);
+                                    Log.e(TAG, "WiFi not enabled disabeling sync");
+                                }
+                            }
+
+                        } else if (syncApp == 1) {
+                            Log.e(TAG, "WiFi selected 1 " + startedSyncService);
+
+                            if (!startedSyncService) {
+
+                                try {
+
+                                    startSync(true);
+                                    Log.e(TAG,"WiFi 1 selected starting");
+                                } catch (Exception e) {
+                                    Log.e(TAG, "WiFi exception " + e.getMessage());
+
+                                }
+                            }
+                        }
+                    } else {
+                        Log.e(TAG, "WiFi never " + startedSyncService);
+                        if (startedSyncService) {
+                            startSync(false);
+                        }
+                    }
+                }
+            };
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -151,13 +249,36 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         userEmail = UserEmailFetcher.getEmail(this);
         receiver = intent.getParcelableExtra("receiver");
-        syncApp = intent.getBooleanExtra("sync",true);
+        //syncApp = intent.getBooleanExtra("sync", true);
+        SharedPreferences SP = PreferenceManager.getDefaultSharedPreferences(this);
+        String syncFreq = SP.getString("prefSync", "1");
+        syncApp = Integer.parseInt(syncFreq);
+        Log.e(TAG, "SYNC111 " + syncFreq);
+
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
         bundle = new Bundle();
 
+        Uri uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        mNotifyMgr = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        Intent resultIntent = new Intent(this, DeviceListActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, resultIntent, PendingIntent.FLAG_NO_CREATE);
+
+        mBuilderAlert = new NotificationCompat.Builder(this)
+                .setSmallIcon(R.drawable.ic_launcher)
+                .setContentTitle("Attention! Hazard Gases Detected")
+                .setContentText("Leave the area immediately")
+                .setColor(Color.RED)
+                .setSound(uri).setVibrate(new long[]{1000, 1000, 1000, 1000, 1000})
+                .setContentIntent(pendingIntent);
+
+
+        //mNotifyMgr.notify(attenntionNotificationID, mBuilderAlert.build());
+
+
         receiver.send(STATUS_RUNNING, Bundle.EMPTY);
-        if(!syncApp){
-            receiver.send(STATUS_SYNC_DISABLED,Bundle.EMPTY);
+        if (syncApp == 0) {
+            receiver.send(STATUS_SYNC_DISABLED, Bundle.EMPTY);
         }
 
 
@@ -166,11 +287,14 @@ public class UsbSerialService extends Service implements ChangeListener {
         filter.addAction(ACTION_USB_PERMISSION);
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
         filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
+
         registerReceiver(mUsbReceiver, filter);
         //////////////
-//        IntentFilter filter2 = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
-//        registerReceiver(mUsbReceiver2, filter2);
-        /////////////
+
+        //////////////
+        IntentFilter networkFilter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+        registerReceiver(mNetworkChangeReceiver, networkFilter);
+        //////////////
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
@@ -201,7 +325,8 @@ public class UsbSerialService extends Service implements ChangeListener {
         // Register the listener with the Location Manager to receive location updates
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
 
-        searchDevices = new Thread() {
+
+        Thread t = new Thread() {
             @Override
             public void run() {
                 Log.d(TAG, "Service Started on Command");
@@ -221,9 +346,9 @@ public class UsbSerialService extends Service implements ChangeListener {
         searchDevices.start();
 
         try {
-            if (syncApp) {
-                startCBLite();
-            }
+
+            startCBLite();
+
         } catch (Exception e) {
             com.couchbase.lite.util.Log.e(TAG, "Error initializing CBLite", e);
         }
@@ -234,7 +359,10 @@ public class UsbSerialService extends Service implements ChangeListener {
     @Override
     public void onDestroy() {
         // The service is no longer used and is being destroyed
+        mNotifyMgr.cancel(attenntionNotificationID);
+        Log.e(TAG, "Service destroyed");
     }
+
 
     ////////////////////Couchbase Code////////////////
     protected void startCBLite() throws Exception {
@@ -262,10 +390,22 @@ public class UsbSerialService extends Service implements ChangeListener {
             }
         }, "1.0");
 
-        startSync();
+        if (syncApp != 0) {
+            if (syncApp == 2) {
+                ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+                if (mWifi.isConnected()) {
+                    startSync(true);
+                }
+            } else if (syncApp == 1) {
+                startSync(true);
+            }
+        }
+
+
     }
 
-    private void startSync() {
+    private void startSync(boolean start) {
 
         URL syncUrl;
         try {
@@ -279,12 +419,22 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         Replication pushReplication = database.createPushReplication(syncUrl);
         pushReplication.setContinuous(true);
+        insertData = start;
+        if (start) {
+            pullReplication.start();
+            pushReplication.start();
 
-        pullReplication.start();
-        pushReplication.start();
+            pullReplication.addChangeListener(this);
+            pushReplication.addChangeListener(this);
+            startedSyncService = true;
+            Log.e(TAG,"WiFi service sync "+start);
+        } else {
+            pullReplication.stop();
+            pushReplication.stop();
+            startedSyncService = false;
+            Log.e(TAG,"WiFi service sync "+start);
 
-        pullReplication.addChangeListener(this);
-        pushReplication.addChangeListener(this);
+        }
 
     }
 
@@ -303,7 +453,7 @@ public class UsbSerialService extends Service implements ChangeListener {
         }
 
         if (event.getError() != null) {
-            receiver.send(STATUS_ERROR_COUCHBASE, Bundle.EMPTY);
+            //receiver.send(STATUS_ERROR_COUCHBASE, Bundle.EMPTY);
             Log.e(TAG, "COUCH_INIT_ERROR " + event.getError());
         }
     }
@@ -376,14 +526,18 @@ public class UsbSerialService extends Service implements ChangeListener {
     private static final String ACTION_USB_PERMISSION =
             "com.android.example.USB_PERMISSION";
     final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
+
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (ACTION_USB_PERMISSION.equals(action)) {
                 synchronized (this) {
+//                    UsbDevice device = (UsbDevice)intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+
                     if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+
                         access_granted = true;
                     } else {
-                        Log.d(TAG, "permission denied for device");
+//                        Log.d(TAG, "permission denied for device " + device);
                     }
                 }
             }
@@ -417,6 +571,39 @@ public class UsbSerialService extends Service implements ChangeListener {
             if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
                 Log.d(TAG,"attacheddddddddddddddddddddddddddddddddddddddddddd");
             }
+        }
+    };
+
+    final BroadcastReceiver mNetworkChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.e(TAG, "1NETWORK CHANGE");
+            ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
+            if (null != activeNetwork) {
+                if (activeNetwork.getType() == ConnectivityManager.TYPE_WIFI) {
+                    Log.e(TAG, "1NETWORK WiFI");
+                    if (syncApp == 2) {
+                        if (!startedSyncService) {
+                            startSync(true);
+                        }
+                    }
+                }
+
+                if (activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) {
+                    Log.e(TAG, "1NETWORK MOBILE");
+                    if (syncApp == 1) {
+                        if (!startedSyncService) {
+                            startSync(true);
+                        }
+                    } else if (syncApp == 2) {
+                        if (startedSyncService) {
+                            startSync(false);
+                        }
+                    }
+                }
+            }
+
         }
     };
 

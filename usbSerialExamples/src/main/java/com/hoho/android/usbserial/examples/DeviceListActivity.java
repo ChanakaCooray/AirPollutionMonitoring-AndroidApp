@@ -2,11 +2,17 @@ package com.hoho.android.usbserial.examples;
 
 import android.app.ActionBar;
 import android.app.Activity;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -39,6 +45,9 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
     private ActionBar actionBar;
     private boolean syncData;
     private int updateFrequency;
+    private NotificationCompat.Builder mBuilderInfo;
+    private NotificationManager mNotifyMgr;
+    private int infoNotificationID = 2;
 
     CircularProgressBar coBar;
     CircularProgressBar so2Bar;
@@ -80,12 +89,17 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
         SharedPreferences SP = PreferenceManager.getDefaultSharedPreferences(this);
 
-        syncData = SP.getBoolean("syncData",true); //Get saved setting value of sync data
+        //syncData = SP.getBoolean("syncData", true); //Get saved setting value of sync data
 
+        mBuilderInfo = new NotificationCompat.Builder(this)
+                .setSmallIcon(R.drawable.ic_launcher)
+                .setContentTitle("Current Gas Levels (ppm)")
+                .setOngoing(true);
+        mNotifyMgr = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         Intent intent = new Intent(Intent.ACTION_SYNC, null, this, UsbSerialService.class);
         intent.putExtra("receiver", mReceiver);
-        intent.putExtra("sync",syncData);
+        //intent.putExtra("sync", syncData); //syncApp in Service
         startService(intent);
     }
 
@@ -105,13 +119,26 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
         switch (item.getItemId()) {
             case R.id.settings:
                 Intent intent = new Intent(this, SettingsActivity.class);
-                startActivityForResult(intent,0);
+                startActivityForResult(intent, 0);
                 return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    public void showError(final String errorMessage) {
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        //mNotifyMgr.cancelAll();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        //mNotifyMgr.cancelAll();
+    }
+
+
+    protected void showError(final String errorMessage) {
 
         runOnUiThread(new Runnable() {
             @Override
