@@ -325,8 +325,7 @@ public class UsbSerialService extends Service implements ChangeListener {
         // Register the listener with the Location Manager to receive location updates
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
 
-
-        Thread t = new Thread() {
+        searchDevices = new Thread() {
             @Override
             public void run() {
                 Log.d(TAG, "Service Started on Command");
