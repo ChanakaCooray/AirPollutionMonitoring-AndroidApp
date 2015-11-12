@@ -6,5 +6,5 @@ package com.hoho.android.usbserial.examples;
 public class AppConstants {
 
     public static final int CO_MAX = 170;
-    public static final int SO_MAX = 120;
+    public static final int SO_MAX = 50;
 }
