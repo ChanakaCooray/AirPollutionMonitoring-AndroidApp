@@ -33,6 +33,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.couchbase.lite.CouchbaseLiteException;
 import com.couchbase.lite.Database;
 import com.couchbase.lite.Document;
 import com.couchbase.lite.Emitter;
@@ -111,7 +112,7 @@ public class UsbSerialService extends Service implements ChangeListener {
     private boolean notificationGiven = false;
     private int attenntionNotificationID = 1;
     private boolean startedSyncService = false;
-    private boolean insertData=false;
+    private boolean insertData = false;
     private Thread searchDevices;
     private volatile boolean runningThreadSearch = false;
     private Replication pushReplication;
@@ -134,8 +135,8 @@ public class UsbSerialService extends Service implements ChangeListener {
 
                             bundle.putStringArray("result", gasValues);
                             checkCritical(gasValues);
-
-                            if (locationFound && insertData) {
+                            //&& insertData
+                            if (locationFound) {
                                 createGasDataEntry(gasValues);
                                 Log.e(TAG, "SENDCOUCH " + gasValues[0] + ":" + gasValues[1]);
                             }
@@ -205,12 +206,12 @@ public class UsbSerialService extends Service implements ChangeListener {
                             ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
                             NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
                             if (mWifi.isConnected()) {
-                                Log.e(TAG, "WiFi enabled "+startedSyncService);
+                                Log.e(TAG, "WiFi enabled " + startedSyncService);
                                 if (!startedSyncService) {
                                     startSync(true);
                                 }
                             } else {
-                                Log.e(TAG, "WiFi not enabled "+startedSyncService);
+                                Log.e(TAG, "WiFi not enabled " + startedSyncService);
                                 if (startedSyncService) {
                                     startSync(false);
                                     Log.e(TAG, "WiFi not enabled disabeling sync");
@@ -225,7 +226,7 @@ public class UsbSerialService extends Service implements ChangeListener {
                                 try {
 
                                     startSync(true);
-                                    Log.e(TAG,"WiFi 1 selected starting");
+                                    Log.e(TAG, "WiFi 1 selected starting");
                                 } catch (Exception e) {
                                     Log.e(TAG, "WiFi exception " + e.getMessage());
 
@@ -237,9 +238,27 @@ public class UsbSerialService extends Service implements ChangeListener {
                         if (startedSyncService) {
                             startSync(false);
                         }
+
                     }
                 }
             };
+
+
+
+    private void emptyDatabase(){
+        try {
+            Log.e(TAG, "DELDB " + database.totalDataSize());
+            if (database.exists()) {
+                database.delete();
+                startCBLite();
+                startSync(true);
+            }
+        } catch (CouchbaseLiteException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -388,6 +407,12 @@ public class UsbSerialService extends Service implements ChangeListener {
             }
         }, "1.0");
 
+        database.addChangeListener(new Database.ChangeListener() {
+            public void changed(Database.ChangeEvent event) {
+                Log.e(TAG,"DBCHANGED "+event.getChanges());
+            }
+        });
+
         if (syncApp != 0) {
             if (syncApp == 2) {
                 ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -414,25 +439,27 @@ public class UsbSerialService extends Service implements ChangeListener {
 
 //        Replication pullReplication = database.createPullReplication(syncUrl);
 //        pullReplication.setContinuous(true);
-        if(pushReplication==null){
+        //if (pushReplication == null) {
             pushReplication = database.createPushReplication(syncUrl);
             pushReplication.setContinuous(true);
             pushReplication.addChangeListener(this);
 
-        }
+        //}
         insertData = start;
         if (start) {
             //pullReplication.start();
             pushReplication.start();
-
+            pushReplication.goOnline();
             //pullReplication.addChangeListener(this);
             startedSyncService = true;
-            Log.e(TAG,"WiFi service sync "+start);
+            Log.e(TAG, "WiFi service sync " + start);
         } else {
             //pullReplication.stop();
             pushReplication.stop();
+            pushReplication.goOffline();
+
             startedSyncService = false;
-            Log.e(TAG,"WiFi service sync "+start);
+            Log.e(TAG, "WiFi service sync " + start);
 
         }
 
@@ -443,15 +470,15 @@ public class UsbSerialService extends Service implements ChangeListener {
         Replication replication = event.getSource();
         com.couchbase.lite.util.Log.d(TAG, "Replication : " + replication + " changed.");
         if (!replication.isRunning()) {
-            String msg = String.format("Replicator %s not running", replication);
+            String msg = String.format("Replication %s not running", replication);
             com.couchbase.lite.util.Log.d(TAG, msg);
             Log.e(TAG, "LISTNER " + msg);
         } else {
             int processed = replication.getCompletedChangesCount();
             int total = replication.getChangesCount();
-            String msg = String.format("Replicator processed %d / %d", processed, total);
+            String msg = String.format("Replication processed %d / %d " + database.totalDataSize(), processed, total);
             com.couchbase.lite.util.Log.d(TAG, msg);
-            Log.e(TAG,"LISTNER "+msg);
+            Log.e(TAG, "LISTNER " + msg);
         }
 
         if (event.getError() != null) {
@@ -571,7 +598,7 @@ public class UsbSerialService extends Service implements ChangeListener {
                 }
             }
             if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
-                Log.d(TAG,"attacheddddddddddddddddddddddddddddddddddddddddddd");
+                Log.d(TAG, "attacheddddddddddddddddddddddddddddddddddddddddddd");
             }
         }
     };
@@ -611,7 +638,7 @@ public class UsbSerialService extends Service implements ChangeListener {
 
     protected synchronized void startConsole() {
         if (sPort == null) {
-            Log.e(TAG,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+            Log.e(TAG, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
         } else {
             final UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 //            UsbManager.ACTION_USB_ACCESSORY_ATTACHED
@@ -624,7 +651,7 @@ public class UsbSerialService extends Service implements ChangeListener {
 
             UsbDeviceConnection connection = usbManager.openDevice(sPort.getDriver().getDevice());
             if (connection == null) {
-                Log.e(TAG,"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+                Log.e(TAG, "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
                 return;
             }
 

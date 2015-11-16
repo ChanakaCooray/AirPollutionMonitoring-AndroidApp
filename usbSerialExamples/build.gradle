@@ -30,9 +30,11 @@ dependencies {
         mavenCentral()
     }
 
-//    compile 'com.android.support:support-v4:22.0.0'
+    compile 'com.android.support:support-v4:22.0.0'
 
     compile 'com.couchbase.lite:couchbase-lite-android:1.1.0-17'
+
+    compile 'com.jjoe64:graphview:4.0.1'
 
     compile project(':usbSerialForAndroid')
 

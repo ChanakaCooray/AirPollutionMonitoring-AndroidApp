@@ -7,7 +7,9 @@
     <string name="carbon_monoxide">CO</string>
     <string name="co_value">NA</string>
     <string name="sulpher_dioxide">SO2</string>
-    <string name="nitrigon_oxide">NOx</string>
+    <string name="nitrigon_oxide">NO2</string>
+    <string name="xAxisLabel">Time Frame (10 Sec)</string>
+
     <string-array name="syncFrequency">
         <item name="1">Mobile data and WiFi</item>
         <item name="2">WiFi Only</item>

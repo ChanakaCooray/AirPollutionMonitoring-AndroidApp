@@ -7,8 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.media.RingtoneManager;
-import android.net.Uri;
+import android.graphics.Paint;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
@@ -19,11 +18,21 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ProgressBar;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.jjoe64.graphview.GraphView;
+import com.jjoe64.graphview.LegendRenderer;
+import com.jjoe64.graphview.Viewport;
+import com.jjoe64.graphview.helper.DateAsXAxisLabelFormatter;
+import com.jjoe64.graphview.helper.StaticLabelsFormatter;
+import com.jjoe64.graphview.series.DataPoint;
+import com.jjoe64.graphview.series.LineGraphSeries;
 import com.lylc.widget.circularprogressbar.CircularProgressBar;
+
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Random;
 
 /**
  * Main activity in application which start background process to handle USB data receive and sync.
@@ -53,18 +62,76 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
     CircularProgressBar so2Bar;
     CircularProgressBar noxBar;
 
+    private static final Random RANDOM = new Random();
+    private LineGraphSeries<DataPoint> coSeries;
+    private LineGraphSeries<DataPoint> so2Series;
+    private LineGraphSeries<DataPoint> noSeries;
+
+    Calendar calendar = Calendar.getInstance();
+
+    private long lastX = 0;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
+        GraphView graph = (GraphView) findViewById(R.id.graph);
+        coSeries = new LineGraphSeries<>();
+        so2Series = new LineGraphSeries<>();
+        noSeries = new LineGraphSeries<>();
+
+        graph.addSeries(coSeries);
+        graph.addSeries(so2Series);
+        graph.addSeries(noSeries);
+
+        coSeries.setColor(Color.parseColor("#00E3FF"));
+        so2Series.setColor(Color.parseColor("#EB61FF"));
+        noSeries.setColor(Color.parseColor("#FFB200"));
+
+        Viewport viewport = graph.getViewport();
+
+        coSeries.setTitle("CO");
+        so2Series.setTitle("SO2");
+        noSeries.setTitle("NO2");
+
+        graph.getGridLabelRenderer().setHorizontalLabelsVisible(false);
+
+        graph.getLegendRenderer().setVisible(true);
+        graph.getLegendRenderer().setAlign(LegendRenderer.LegendAlign.TOP);
+
+        viewport.setMinY(0);
+        viewport.setMaxY(1000);
+
+        viewport.setMinX(0);
+        viewport.setMaxX(900);
+
+        viewport.setYAxisBoundsManual(true);
+        viewport.setXAxisBoundsManual(true);
+        viewport.setScrollable(false);
+
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                while (true){
+//                    runOnUiThread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            addEntry();
+//                        }
+//                    });
+//
+//                    try {
+//                        Thread.sleep(600);
+//                    } catch (InterruptedException e) {
+//
+//                    }
+//                }
+//            }
+//        }).start();
+
         mProgressBarTitle = (TextView) findViewById(R.id.progressBarTitle);
         demoTitle = (TextView) findViewById(R.id.demoTitle);
-//        mDumpTextView = (TextView) findViewById(R.id.consoleText);
-//        mCOValue = (TextView) findViewById(R.id.co_value);
-//        mSO2Value = (TextView) findViewById(R.id.so2_value);
-//
-//        mScrollView = (ScrollView) findViewById(R.id.demoScroller);
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
 
         mReceiver = new UsbDataReceiver(new Handler());
@@ -101,6 +168,10 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
         intent.putExtra("receiver", mReceiver);
         //intent.putExtra("sync", syncData); //syncApp in Service
         startService(intent);
+    }
+
+    private void addEntry() {
+        coSeries.appendData(new DataPoint(lastX++, RANDOM.nextDouble() * 50d), true, 10);
     }
 
     private void hideProgressBar() {
@@ -179,11 +250,31 @@ public class DeviceListActivity extends Activity implements UsbDataReceiver.Rece
 //                    mSO2Value.setText(results[1]);
 
                     coBar.setProgress(Integer.parseInt(results[0])/10);
-                    so2Bar.setProgress(Integer.parseInt(results[1]) / 10);
+                    so2Bar.setProgress(Integer.parseInt(results[1])/10);
 
                     coBar.setTitle(results[0]);
                     so2Bar.setTitle(results[1]);
+
+//                    Date date = new Date();
+//                    calendar.setTime(date);
+//
+//                    int minutes = calendar.get(Calendar.MINUTE);
+//                    int seconds = calendar.get(Calendar.SECOND);
+//
+//                    double xAxis = minutes+seconds*100.0/60;
+
+                    int dataPoints = 10;
+
+                    if(lastX%100==0) {
+                        long x = lastX;
+                        coSeries.appendData(new DataPoint(x, Double.parseDouble(results[0])), true, dataPoints);
+                        so2Series.appendData(new DataPoint(x, Double.parseDouble(results[1])), true, dataPoints);
+                        noSeries.appendData(new DataPoint(x, 0), true, dataPoints);
+                    }
+
+                    lastX++;
                 }
+
                 break;
 
             case UsbSerialService.STATUS_ERROR:
