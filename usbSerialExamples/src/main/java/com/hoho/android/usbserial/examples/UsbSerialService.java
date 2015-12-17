@@ -54,10 +54,12 @@ import java.security.Provider;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -139,6 +141,8 @@ public class UsbSerialService extends Service implements ChangeListener {
                             if (locationFound) {
                                 createGasDataEntry(gasValues);
                                 Log.e(TAG, "SENDCOUCH " + gasValues[0] + ":" + gasValues[1]);
+                            }else {
+                                Log.e(TAG,"GGGGGG");
                             }
                         } else {
                             Log.e(TAG, "SENDCOUCHERROR ");
@@ -502,16 +506,24 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         Map<String, Object> properties = new HashMap<>();
 
+//        Date timeNow = new Date();
+//        SimpleDateFormat sdf = new SimpleDateFormat();
+//        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+//        String s = sdf.format(timeNow);
+
         properties.put("_id", id);
+        properties.put("gases",new String[]{"CO","SO2"});
         properties.put("CO", gasData[0]);
+        properties.put("SO2", gasData[1]);
         properties.put("lat", latitute);
         properties.put("lon", longitude);
         properties.put("email", userEmail);
-        properties.put("created_at", currentTimeString);
+        properties.put("Time", currentTimeString);
         document.putProperties(properties);
 
         com.couchbase.lite.util.Log.d(TAG, "Created new gas entry item with id: %s", document.getId());
         Log.d(TAG, "CO value" + gasData[0]);
+        Log.d(TAG, "SO2 value" + gasData[1]);
         return document;
     }
 
