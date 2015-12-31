@@ -282,7 +282,6 @@ public class UsbSerialService extends Service implements ChangeListener {
         syncApp = Integer.parseInt(syncFreq);
         deviceSleepingPeriod = Integer.parseInt(sleepPeriod);
         deviceSleepTimePeriod = Integer.parseInt(sleepTimePeriod);
-        syncApp = Integer.parseInt(syncFreq);
         Log.e(TAG, "SYNC111 " + syncFreq);
 
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
