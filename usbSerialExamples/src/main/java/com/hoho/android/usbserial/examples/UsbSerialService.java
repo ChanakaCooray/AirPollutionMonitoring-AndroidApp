@@ -111,6 +111,8 @@ public class UsbSerialService extends Service implements ChangeListener {
     private double longitude;
     private boolean locationFound = false;
     private int syncApp;
+    private int deviceSleepingPeriod;
+    private int deviceSleepTimePeriod;
     private boolean notificationGiven = false;
     private int attenntionNotificationID = 1;
     private boolean startedSyncService = false;
@@ -133,7 +135,7 @@ public class UsbSerialService extends Service implements ChangeListener {
                     String[] gasValues = getGasValues(received);
 
                     try {
-                        if (gasValues != null && gasValues[0] != null && gasValues[1] != null) {
+                        if (gasValues != null && gasValues[0] != null && gasValues[1] != null && gasValues[2] != null) {
 
                             bundle.putStringArray("result", gasValues);
                             checkCritical(gasValues);
@@ -275,7 +277,11 @@ public class UsbSerialService extends Service implements ChangeListener {
         //syncApp = intent.getBooleanExtra("sync", true);
         SharedPreferences SP = PreferenceManager.getDefaultSharedPreferences(this);
         String syncFreq = SP.getString("prefSync", "1");
+        String sleepTimePeriod = SP.getString("sleepTimePeriod", "1000");
+        String sleepPeriod = SP.getString("sleepPeriod", "1000");
         syncApp = Integer.parseInt(syncFreq);
+        deviceSleepingPeriod = Integer.parseInt(sleepPeriod);
+        deviceSleepTimePeriod = Integer.parseInt(sleepTimePeriod);
         Log.e(TAG, "SYNC111 " + syncFreq);
 
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
@@ -524,6 +530,7 @@ public class UsbSerialService extends Service implements ChangeListener {
         com.couchbase.lite.util.Log.d(TAG, "Created new gas entry item with id: %s", document.getId());
         Log.d(TAG, "CO value" + gasData[0]);
         Log.d(TAG, "SO2 value" + gasData[1]);
+        Log.e(TAG,"NO2 value"+gasData[2]);
         return document;
     }
 

@@ -15,4 +15,15 @@
         android:defaultValue="1"/>
 
 
+    <EditTextPreference
+        android:title="Set Sleep time period"
+        android:summary="Sleep time period"
+        android:key="sleepTimePeriod"
+        android:defaultValue="1000"/>
+
+    <EditTextPreference
+        android:title="Set Sleeping period"
+        android:summary="Sleeping period"
+        android:key="sleepPeriod"
+        android:defaultValue="1000"/>
 </PreferenceScreen>
