@@ -14,7 +14,9 @@ import android.graphics.Color;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
+import android.location.Address;
 import android.location.Criteria;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -58,6 +60,7 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -516,6 +519,28 @@ public class UsbSerialService extends Service implements ChangeListener {
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
         String time = sdf.format(timeNow);
 
+        String city = getNearestCity(latitute, longitude);
+
+        if(city!=null) {
+            Address cityAddress = getAddressOfCity(city);
+            if (cityAddress != null) {
+                double distance = getDistance(latitute, longitude, cityAddress.getLatitude(), cityAddress.getLongitude());
+
+                Log.d(TAG, "ssssssssssssssssss " + distance);
+                Log.d(TAG, "ssssssssssssssssss " + cityAddress.getLatitude() + "   " + cityAddress.getLongitude());
+
+                properties.put("City", cityAddress.getLocality());
+                properties.put("CityLan", cityAddress.getLatitude());
+                properties.put("CityLon", cityAddress.getLongitude());
+                properties.put("Distance", distance / 1000.0);
+            }
+            else{
+                Log.e(TAG, "Error in city coordinates.");
+            }
+        }
+        else{
+            Log.e(TAG, "Error in city coordinates.");
+        }
 
         properties.put("_id", id);
         properties.put("gases",new String[]{"CO","SO2","NO2"});
@@ -526,6 +551,7 @@ public class UsbSerialService extends Service implements ChangeListener {
         properties.put("lon", longitude);
         properties.put("email", userEmail);
         properties.put("Time", time);
+
         document.putProperties(properties);
 
         com.couchbase.lite.util.Log.d(TAG, "Created new gas entry item with id: %s", document.getId());
@@ -537,6 +563,56 @@ public class UsbSerialService extends Service implements ChangeListener {
 
     //////////////////End Couchbase Code//////////////
 
+
+    private double getDistance(double lat1,double lon1,double lat2,double lon2){
+        Location loc1 = new Location("");
+        loc1.setLatitude(lat1);
+        loc1.setLongitude(lon1);
+
+        Location loc2 = new Location("");
+        loc2.setLatitude(lat2);
+        loc2.setLongitude(lon2);
+
+        double distanceInMeters = loc1.distanceTo(loc2);
+
+        return distanceInMeters;
+    }
+
+    private Address getAddressOfCity(String city){
+        String location = city;
+        Geocoder gc = new Geocoder(this);
+
+        Address address = null;
+
+        try {
+            List<Address> addresses= gc.getFromLocationName(location, 1);
+            address = addresses.get(0);
+        } catch (IOException e) {
+            Log.e(TAG, "Error in city coordinates.");
+        }
+
+        return address;
+    }
+
+    private String getNearestCity(double lat,double lng){
+
+        Log.d(TAG,"sssssssssssssssssssss");
+
+        Geocoder gcd = new Geocoder(getApplicationContext(), Locale.getDefault());
+        List<Address> addresses = null;
+        try {
+            addresses = gcd.getFromLocation(lat, lng, 1);
+        } catch (IOException e) {
+            Log.e(TAG,"Error");
+        }
+        if (addresses.size() > 0) {
+            Log.d(TAG, "sssssssssssssssssssss  " + addresses.get(0).getLocality());
+            return addresses.get(0).getLocality();
+        }
+        else{
+            return null;
+        }
+    }
 
     private boolean refreshDeviceList() {
 
