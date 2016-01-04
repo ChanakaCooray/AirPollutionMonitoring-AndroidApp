@@ -498,7 +498,6 @@ public class UsbSerialService extends Service implements ChangeListener {
         UUID uuid = UUID.randomUUID();
         Calendar calendar = GregorianCalendar.getInstance();
         long currentTime = calendar.getTimeInMillis();
-        String currentTimeString = dateFormatter.format(calendar.getTime());
 
         String id = currentTime + "-" + uuid.toString();
 
@@ -506,10 +505,11 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         Map<String, Object> properties = new HashMap<>();
 
-//        Date timeNow = new Date();
-//        SimpleDateFormat sdf = new SimpleDateFormat();
-//        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-//        String s = sdf.format(timeNow);
+        Date timeNow = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE MMM dd yyyy hh:mm:ss");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String time = sdf.format(timeNow);
+
 
         properties.put("_id", id);
         properties.put("gases",new String[]{"CO","SO2"});
@@ -518,7 +518,7 @@ public class UsbSerialService extends Service implements ChangeListener {
         properties.put("lat", latitute);
         properties.put("lon", longitude);
         properties.put("email", userEmail);
-        properties.put("Time", currentTimeString);
+        properties.put("Time", time);
         document.putProperties(properties);
 
         com.couchbase.lite.util.Log.d(TAG, "Created new gas entry item with id: %s", document.getId());
