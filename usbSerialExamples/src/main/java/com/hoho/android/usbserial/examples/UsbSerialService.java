@@ -518,9 +518,10 @@ public class UsbSerialService extends Service implements ChangeListener {
 
 
         properties.put("_id", id);
-        properties.put("gases",new String[]{"CO","SO2"});
+        properties.put("gases",new String[]{"CO","SO2","NO2"});
         properties.put("CO", gasData[0]);
         properties.put("SO2", gasData[1]);
+        properties.put("NO2", gasData[2]);
         properties.put("lat", latitute);
         properties.put("lon", longitude);
         properties.put("email", userEmail);
