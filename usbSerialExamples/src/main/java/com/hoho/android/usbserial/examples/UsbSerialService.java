@@ -145,7 +145,7 @@ public class UsbSerialService extends Service implements ChangeListener {
                             //&& insertData
                             if (locationFound) {
                                 createGasDataEntry(gasValues);
-                                Log.e(TAG, "SENDCOUCH " + gasValues[0] + ":" + gasValues[1]);
+                                Log.e(TAG, "SENDCOUCH " + gasValues[0] + ":" + gasValues[1]+": "+gasValues[2]);
                             }else {
                                 Log.e(TAG,"GGGGGG");
                             }
@@ -155,7 +155,7 @@ public class UsbSerialService extends Service implements ChangeListener {
                         receiver.send(STATUS_FINISHED, bundle);
                     } catch (Exception e) {
                         Log.e(TAG, "couchbase can't create entry");
-                        Log.e(TAG, "SENDCOUCHERROR EXCEPTION" + e.getMessage());
+                        Log.e(TAG, "SENDCOUCHERROR EXCEPTION" + e.getStackTrace());
                     }
 
                 }
@@ -605,7 +605,7 @@ public class UsbSerialService extends Service implements ChangeListener {
         } catch (IOException e) {
             Log.e(TAG,"Error");
         }
-        if (addresses.size() > 0) {
+        if (addresses!=null && addresses.size() > 0) {
             Log.d(TAG, "sssssssssssssssssssss  " + addresses.get(0).getLocality());
             return addresses.get(0).getLocality();
         }
@@ -830,15 +830,24 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         int i = 0;
         Log.d(TAG, "ALLDATA:" + data);
-        for (String gas : gasses) {
-            Log.d(TAG, "GAS_VALUE:" + gas);
-            String[] gasData = gas.split(":");
-            if (gasData.length == 3) {
-                gasValues[i] = gasData[2];
+        try{
+            for (String gas : gasses) {
+                Log.d(TAG, "GAS_VALUE:" + gas);
+                String[] gasData = gas.split(":");
+                if (gasData.length == 3) {
+                    gasValues[i] = gasData[2];
 
+                }
+                i += 1;
             }
-            i += 1;
+        }catch (Exception e){
+            Log.d(TAG, "ALLDATAEXCEPTION d:" + data.toString());
+            Log.d(TAG, "ALLDATAEXCEPTION gv:" + gasValues.toString());
+            Log.d(TAG, "ALLDATAEXCEPTION gs:" + gasses.toString());
+            Log.d(TAG, "ALLDATAEXCEPTION:" + e.getMessage());
+
         }
+
         return gasValues;
     }
 
