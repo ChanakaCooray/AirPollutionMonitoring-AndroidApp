@@ -115,7 +115,7 @@ public class UsbSerialService extends Service implements ChangeListener {
     private boolean locationFound = false;
     private int syncApp;
     private int deviceSleepingPeriod;
-    private int deviceSleepTimePeriod;
+    //private int deviceSleepTimePeriod;
     private long startTime;
     private boolean notificationGiven = false;
     private int attenntionNotificationID = 1;
@@ -124,6 +124,7 @@ public class UsbSerialService extends Service implements ChangeListener {
     private Thread searchDevices;
     private volatile boolean runningThreadSearch = false;
     private Replication pushReplication;
+    private boolean sleeping;
     private final SerialInputOutputManager.Listener mListener =
             new SerialInputOutputManager.Listener() {
 
@@ -134,45 +135,44 @@ public class UsbSerialService extends Service implements ChangeListener {
 
                 @Override
                 public void onNewData(final byte[] data) {
-                    Log.e(TAG, "ON new Data called");
+                    Log.e(TAG, "ON new Data called" +System.currentTimeMillis());
                     String received = new String(data);
                     String[] gasValues = getGasValues(received);
+                    if (startTime + deviceSleepingPeriod< System.currentTimeMillis()) {
 
-                    if(startTime + deviceSleepTimePeriod < System.currentTimeMillis()) {
-
-                        Log.e(TAG,"onnababooo"+startTime);
-                        String s="S";
+                        Log.e(TAG, "STARTSLEEPING: " +deviceSleepingPeriod +" : "+System.currentTimeMillis());
+                        String s = "S";
                         try {
-                            sPort.write(s.getBytes(),100);
-                        }
-
-                        catch (Exception e){
-                            Log.e(TAG,"error is port writing");
+                            sPort.write(s.getBytes(), 100);
+                        } catch (Exception e) {
+                            Log.e(TAG, "STARTSLEEPING error is port writing");
                         }
                         startTime = System.currentTimeMillis();
+                        sleeping=true;
                     }
 
-                        try {
-                            if (gasValues != null && gasValues[0] != null && gasValues[1] != null && gasValues[2] != null) {
 
-                                bundle.putStringArray("result", gasValues);
-                                checkCritical(gasValues);
-                                //&& insertData
-                                if (locationFound) {
-                                    createGasDataEntry(gasValues);
-                                    Log.e(TAG, "SENDCOUCH " + gasValues[0] + ":" + gasValues[1] + ": " + gasValues[2]);
-                                } else {
-                                    Log.e(TAG, "GGGGGG");
-                                }
+
+                    try {
+                        if (gasValues != null && gasValues[0] != null && gasValues[1] != null && gasValues[2] != null) {
+
+                            bundle.putStringArray("result", gasValues);
+                            checkCritical(gasValues);
+                            //&& insertData
+                            if (locationFound) {
+                                createGasDataEntry(gasValues);
+                                Log.e(TAG, "SENDCOUCH " + gasValues[0] + ":" + gasValues[1] + ": " + gasValues[2]);
                             } else {
-                                Log.e(TAG, "SENDCOUCHERROR ");
+                                Log.e(TAG, "GGGGGG");
                             }
-                            receiver.send(STATUS_FINISHED, bundle);
-                        } catch (Exception e) {
-                            Log.e(TAG, "couchbase can't create entry");
-                            Log.e(TAG, "SENDCOUCHERROR EXCEPTION" + e.getStackTrace());
+                        } else {
+                            Log.e(TAG, "SENDCOUCHERROR ");
                         }
-
+                        receiver.send(STATUS_FINISHED, bundle);
+                    } catch (Exception e) {
+                        Log.e(TAG, "couchbase can't create entry");
+                        Log.e(TAG, "SENDCOUCHERROR EXCEPTION" + e.getStackTrace());
+                    }
 
 
                 }
@@ -270,11 +270,10 @@ public class UsbSerialService extends Service implements ChangeListener {
                         }
                     }
                     else if(key.equals("sleepPeriod")) {
-
+                        deviceSleepingPeriod = Integer.parseInt(sharedPreferences.getString("sleepPeriod", "60"));
+                        startTime = System.currentTimeMillis();
                     }
-                    else if(key.equals("sleepTimePeriod")){
 
-                    }
                 }
             };
 
@@ -305,12 +304,14 @@ public class UsbSerialService extends Service implements ChangeListener {
         //syncApp = intent.getBooleanExtra("sync", true);
         SharedPreferences SP = PreferenceManager.getDefaultSharedPreferences(this);
         String syncFreq = SP.getString("prefSync", "1");
-        String sleepTimePeriod = SP.getString("sleepTimePeriod", "1000");
+        //String sleepTimePeriod = SP.getString("sleepTimePeriod", "1000");
         String sleepPeriod = SP.getString("sleepPeriod", "1000");
         startTime = System.currentTimeMillis();
         syncApp = Integer.parseInt(syncFreq);
-        deviceSleepingPeriod = Integer.parseInt(sleepPeriod);
-        deviceSleepTimePeriod = Integer.parseInt(sleepTimePeriod);
+        deviceSleepingPeriod = Integer.parseInt(sleepPeriod)*1000*60;
+        //Log.d(TAG,"sleepPeriod "+sleepTimePeriod);
+        //deviceSleepTimePeriod = (int)(Double.parseDouble(sleepTimePeriod)*60*1000);
+        //Log.d(TAG,"sleepPeriod1 "+deviceSleepTimePeriod);
         Log.e(TAG, "SYNC111 " + syncFreq);
 
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
@@ -365,6 +366,7 @@ public class UsbSerialService extends Service implements ChangeListener {
                 Log.d(TAG, "latitude" + latitute);
                 Log.d(TAG, "longitude" + longitude);
                 locationFound = true;
+
             }
 
             public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -669,6 +671,7 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         }
         Log.d(TAG, "hide progress bar");
+        //resumeDeviceSleep();
         return false;
 
     }
@@ -869,7 +872,7 @@ public class UsbSerialService extends Service implements ChangeListener {
                 i += 1;
             }
         }catch (Exception e){
-            Log.d(TAG, "ALLDATAEXCEPTION d:" + data.toString());
+            Log.d(TAG, "ALLDATAEXCEPTION d:" + data.length());
             Log.d(TAG, "ALLDATAEXCEPTION gv:" + gasValues.toString());
             Log.d(TAG, "ALLDATAEXCEPTION gs:" + gasses.toString());
             Log.d(TAG, "ALLDATAEXCEPTION:" + e.getMessage());
@@ -878,6 +881,9 @@ public class UsbSerialService extends Service implements ChangeListener {
 
         return gasValues;
     }
+
+
+
 
 
 }

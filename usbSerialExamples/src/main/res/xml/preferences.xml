@@ -15,15 +15,17 @@
         android:defaultValue="1"/>
 
 
-    <EditTextPreference
-        android:title="Set Sleep time period"
-        android:summary="Sleep time period"
-        android:key="sleepTimePeriod"
-        android:defaultValue="1000"/>
+    <!--<EditTextPreference-->
+        <!--android:title="Set device up time period (min)"-->
+        <!--android:summary="Device will go to power saving sleep after this time"-->
+        <!--android:key="sleepTimePeriod"-->
+        <!--android:defaultValue="60"-->
+        <!--android:inputType="numberDecimal"/>-->
 
     <EditTextPreference
-        android:title="Set Sleeping period"
-        android:summary="Sleeping period"
+        android:title="Set device to power down time (min)"
+        android:summary="Device will go to maximum power saving mode."
         android:key="sleepPeriod"
-        android:defaultValue="1000"/>
+        android:defaultValue="60"
+        android:inputType="number"/>
 </PreferenceScreen>
