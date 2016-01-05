@@ -116,6 +116,7 @@ public class UsbSerialService extends Service implements ChangeListener {
     private int syncApp;
     private int deviceSleepingPeriod;
     private int deviceSleepTimePeriod;
+    private long startTime;
     private boolean notificationGiven = false;
     private int attenntionNotificationID = 1;
     private boolean startedSyncService = false;
@@ -137,26 +138,42 @@ public class UsbSerialService extends Service implements ChangeListener {
                     String received = new String(data);
                     String[] gasValues = getGasValues(received);
 
-                    try {
-                        if (gasValues != null && gasValues[0] != null && gasValues[1] != null && gasValues[2] != null) {
+                    if(startTime + deviceSleepTimePeriod < System.currentTimeMillis()) {
 
-                            bundle.putStringArray("result", gasValues);
-                            checkCritical(gasValues);
-                            //&& insertData
-                            if (locationFound) {
-                                createGasDataEntry(gasValues);
-                                Log.e(TAG, "SENDCOUCH " + gasValues[0] + ":" + gasValues[1]+": "+gasValues[2]);
-                            }else {
-                                Log.e(TAG,"GGGGGG");
-                            }
-                        } else {
-                            Log.e(TAG, "SENDCOUCHERROR ");
+                        Log.e(TAG,"onnababooo"+startTime);
+                        String s="S";
+                        try {
+                            sPort.write(s.getBytes(),100);
                         }
-                        receiver.send(STATUS_FINISHED, bundle);
-                    } catch (Exception e) {
-                        Log.e(TAG, "couchbase can't create entry");
-                        Log.e(TAG, "SENDCOUCHERROR EXCEPTION" + e.getStackTrace());
+
+                        catch (Exception e){
+                            Log.e(TAG,"error is port writing");
+                        }
+                        startTime = System.currentTimeMillis();
                     }
+
+                        try {
+                            if (gasValues != null && gasValues[0] != null && gasValues[1] != null && gasValues[2] != null) {
+
+                                bundle.putStringArray("result", gasValues);
+                                checkCritical(gasValues);
+                                //&& insertData
+                                if (locationFound) {
+                                    createGasDataEntry(gasValues);
+                                    Log.e(TAG, "SENDCOUCH " + gasValues[0] + ":" + gasValues[1] + ": " + gasValues[2]);
+                                } else {
+                                    Log.e(TAG, "GGGGGG");
+                                }
+                            } else {
+                                Log.e(TAG, "SENDCOUCHERROR ");
+                            }
+                            receiver.send(STATUS_FINISHED, bundle);
+                        } catch (Exception e) {
+                            Log.e(TAG, "couchbase can't create entry");
+                            Log.e(TAG, "SENDCOUCHERROR EXCEPTION" + e.getStackTrace());
+                        }
+
+
 
                 }
             };
@@ -207,54 +224,62 @@ public class UsbSerialService extends Service implements ChangeListener {
                 @Override
                 public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
                                                       String key) {
-                    syncApp = Integer.parseInt(sharedPreferences.getString(key, "1"));
-                    Log.e(TAG, "SYNC111 Changed " + syncApp);
+                    Log.e(TAG, "++**" + key);
+                    if (key.equals("prefSync")) {
+                        syncApp = Integer.parseInt(sharedPreferences.getString(key, "1"));
+                        Log.e(TAG, "SYNC111 Changed " + syncApp);
 
-                    if (syncApp != 0) {
-                        if (syncApp == 2) {
-                            ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-                            NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-                            if (mWifi.isConnected()) {
-                                Log.e(TAG, "WiFi enabled " + startedSyncService);
+                        if (syncApp != 0) {
+                            if (syncApp == 2) {
+                                ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                                NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+                                if (mWifi.isConnected()) {
+                                    Log.e(TAG, "WiFi enabled " + startedSyncService);
+                                    if (!startedSyncService) {
+                                        startSync(true);
+                                    }
+                                } else {
+                                    Log.e(TAG, "WiFi not enabled " + startedSyncService);
+                                    if (startedSyncService) {
+                                        startSync(false);
+                                        Log.e(TAG, "WiFi not enabled disabeling sync");
+                                    }
+                                }
+
+                            } else if (syncApp == 1) {
+                                Log.e(TAG, "WiFi selected 1 " + startedSyncService);
+
                                 if (!startedSyncService) {
-                                    startSync(true);
-                                }
-                            } else {
-                                Log.e(TAG, "WiFi not enabled " + startedSyncService);
-                                if (startedSyncService) {
-                                    startSync(false);
-                                    Log.e(TAG, "WiFi not enabled disabeling sync");
-                                }
-                            }
 
-                        } else if (syncApp == 1) {
-                            Log.e(TAG, "WiFi selected 1 " + startedSyncService);
+                                    try {
 
-                            if (!startedSyncService) {
+                                        startSync(true);
+                                        Log.e(TAG, "WiFi 1 selected starting");
+                                    } catch (Exception e) {
+                                        Log.e(TAG, "WiFi exception " + e.getMessage());
 
-                                try {
-
-                                    startSync(true);
-                                    Log.e(TAG, "WiFi 1 selected starting");
-                                } catch (Exception e) {
-                                    Log.e(TAG, "WiFi exception " + e.getMessage());
-
+                                    }
                                 }
                             }
+                        } else {
+                            Log.e(TAG, "WiFi never " + startedSyncService);
+                            if (startedSyncService) {
+                                startSync(false);
+                            }
+
                         }
-                    } else {
-                        Log.e(TAG, "WiFi never " + startedSyncService);
-                        if (startedSyncService) {
-                            startSync(false);
-                        }
+                    }
+                    else if(key.equals("sleepPeriod")) {
+
+                    }
+                    else if(key.equals("sleepTimePeriod")){
 
                     }
                 }
             };
 
 
-
-    private void emptyDatabase(){
+    private void emptyDatabase() {
         try {
             Log.e(TAG, "DELDB " + database.totalDataSize());
             if (database.exists()) {
@@ -282,6 +307,7 @@ public class UsbSerialService extends Service implements ChangeListener {
         String syncFreq = SP.getString("prefSync", "1");
         String sleepTimePeriod = SP.getString("sleepTimePeriod", "1000");
         String sleepPeriod = SP.getString("sleepPeriod", "1000");
+        startTime = System.currentTimeMillis();
         syncApp = Integer.parseInt(syncFreq);
         deviceSleepingPeriod = Integer.parseInt(sleepPeriod);
         deviceSleepTimePeriod = Integer.parseInt(sleepTimePeriod);
@@ -746,6 +772,7 @@ public class UsbSerialService extends Service implements ChangeListener {
             Log.d(TAG, "BBBBBBBGranted");
 
             UsbDeviceConnection connection = usbManager.openDevice(sPort.getDriver().getDevice());
+
             if (connection == null) {
                 Log.e(TAG, "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
                 return;
@@ -781,6 +808,7 @@ public class UsbSerialService extends Service implements ChangeListener {
         if (sPort != null) {
             Log.i(TAG, "Starting io manager ..");
             mSerialIoManager = new SerialInputOutputManager(sPort, mListener);
+
             mExecutor.submit(mSerialIoManager);
         }
     }
