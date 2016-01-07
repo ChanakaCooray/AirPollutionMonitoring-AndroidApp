@@ -103,8 +103,8 @@ public class UsbSerialService extends Service implements ChangeListener {
     private NotificationCompat.Builder mBuilderAlert;
 
 
-    public static final String DATABASE_NAME = "grocery-sync";
-    public static final String designDocName = "grocery-local";
+    public static final String DATABASE_NAME = "air-pollution-sync";
+    public static final String designDocName = "air-pollution-local";
     public static final String byDateViewName = "byDate";
     public static final String SYNC_URL = "http://192.248.8.247:4985/sync_gateway";
     private String userEmail;
