@@ -55,6 +55,7 @@ import java.net.URL;
 import java.security.Provider;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -135,9 +136,12 @@ public class UsbSerialService extends Service implements ChangeListener {
 
                 @Override
                 public void onNewData(final byte[] data) {
-                    Log.e(TAG, "ON new Data called" +System.currentTimeMillis());
+
+                    Log.d(TAG, "ON new Data called" +System.currentTimeMillis());
                     String received = new String(data);
+                    Log.d(TAG,"vvvvvvvvvvvvvvvvv: "+ received);
                     String[] gasValues = getGasValues(received);
+
                     if (startTime + deviceSleepingPeriod< System.currentTimeMillis()) {
 
                         Log.e(TAG, "STARTSLEEPING: " +deviceSleepingPeriod +" : "+System.currentTimeMillis());
@@ -873,9 +877,10 @@ public class UsbSerialService extends Service implements ChangeListener {
             }
         }catch (Exception e){
             Log.d(TAG, "ALLDATAEXCEPTION d:" + data.length());
-            Log.d(TAG, "ALLDATAEXCEPTION gv:" + gasValues.toString());
+            Log.d(TAG, "ALLDATAEXCEPTION gv:" + Arrays.toString(gasValues));
             Log.d(TAG, "ALLDATAEXCEPTION gs:" + gasses.toString());
             Log.d(TAG, "ALLDATAEXCEPTION:" + e.getMessage());
+            buffer = new String("");
 
         }
 
